@@ -3,3 +3,6 @@ pytest==8.3.5
 iniconfig==2.3.1
 packaging==26.3
 pluggy==1.7.0
+playwright==1.64.1
+pyee==14.0.0
+greenlet==3.5.6

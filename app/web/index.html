@@ -1,3 +1,63 @@
 <!doctype html>
-<html lang="en"><meta charset="utf-8"><title>Receipt Agent</title>
-<h1>Receipt Agent</h1><p>Phase 1: health checks are available and business APIs explicitly return 501. This page is not connected to an upload flow yet.</p></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Upload a receipt | Receipt Agent</title>
+  <link rel="stylesheet" href="/web/style.css">
+  <script src="/web/upload.js" defer></script>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="eyebrow">RECEIPT AGENT</p>
+      <h1>One PDF. A clearer record.</h1>
+      <p class="intro">Upload a receipt to extract its details, check the numbers, and see its Airtable sync status.</p>
+    </header>
+    <section class="panel" aria-labelledby="upload-heading">
+      <h2 id="upload-heading">Upload a receipt</h2>
+      <form id="upload-form" autocomplete="off">
+        <label for="access-key">Access key</label>
+        <input id="access-key" type="password" required autocomplete="off" spellcheck="false"
+               autocapitalize="none" aria-describedby="key-help">
+        <p id="key-help" class="help">Use your application access key. It stays in this page's memory and is sent only in the request header.</p>
+        <label for="pdf-file">Receipt PDF</label>
+        <input id="pdf-file" type="file" name="file" accept=".pdf,application/pdf" required aria-describedby="file-help">
+        <p id="file-help" class="help">Select one PDF. File size, page count, and PDF validity are checked by the server.</p>
+        <button id="upload-button" type="submit">Upload PDF</button>
+      </form>
+      <p id="waiting" role="status" hidden>Processing your PDF. Please keep this page open.</p>
+      <noscript><p>JavaScript is required to upload a PDF from this page.</p></noscript>
+    </section>
+    <section id="error-area" class="panel error" role="alert" hidden>
+      <h2>Upload needs attention</h2>
+      <p id="error-message"></p>
+    </section>
+    <section id="result" class="panel" aria-labelledby="result-heading" tabindex="-1" hidden>
+      <h2 id="result-heading">Receipt result</h2>
+      <p id="receipt-id" class="help"></p>
+      <div class="statuses" aria-live="polite">
+        <div><h3>Local record</h3><p id="local-status" class="status"></p></div>
+        <div><h3>Airtable</h3><p id="sync-status" class="status"></p></div>
+      </div>
+      <p id="sync-note" class="help"></p>
+      <p id="record-id" class="help" hidden></p>
+      <dl id="receipt-details" class="details"></dl>
+      <h3>Line items</h3>
+      <p id="items-empty" class="help" hidden></p>
+      <div id="items-wrapper" class="table-scroll" hidden>
+        <table>
+          <caption class="sr-only">Extracted receipt line items</caption>
+          <thead><tr><th scope="col">Description</th><th scope="col">Quantity</th><th scope="col">Unit price</th><th scope="col">Amount</th></tr></thead>
+          <tbody id="items"></tbody>
+        </table>
+      </div>
+      <h3>Validation</h3>
+      <p id="validation-status"></p>
+      <ul id="validation-issues"></ul>
+    </section>
+    <p class="footer">Local saving and Airtable synchronization are separate steps. Review extracted details against your original receipt.</p>
+  </main>
+</body>
+</html>

@@ -4,7 +4,7 @@ from tempfile import TemporaryFile
 
 from fastapi import FastAPI
 
-from app.api.routes import health, receipts
+from app.api.routes import health, receipts, web
 from app.api.uploads import UploadBodyLimitMiddleware
 from app.config import Settings
 from app.integrations.airtable import AirtableClient
@@ -40,6 +40,7 @@ app = FastAPI(title="Receipt Agent", version="0.1.0", lifespan=lifespan)
 app.add_middleware(UploadBodyLimitMiddleware)
 app.include_router(health.router)
 app.include_router(receipts.router)
+app.include_router(web.router)
 
 
 def run() -> None:

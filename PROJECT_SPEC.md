@@ -1,6 +1,6 @@
 # PDF receipt processing specification
 
-Current phase: Airtable synchronization after authenticated upload and successful local save. Discount normalization, validation, atomic originals, SQLite and the HTTP admission/query contract are reused. Verification injects extractors and simulated HTTP transports; no real model or Airtable request is authorized. Notifications, UI, exports and deployment remain outside this assignment; exports return 501.
+Current phase: a minimal same-origin PDF upload page served by the existing FastAPI application. Discount normalization, validation, atomic originals, SQLite, Airtable synchronization and the HTTP admission/query contract are reused unchanged. This assignment verifies the page with simulated responses, injected extractors and simulated HTTP transports only; no real model or Airtable request is authorized. Notifications, exports and deployment remain outside this assignment; exports return 501. Prior live acceptance is recorded separately in TASKS.md.
 
 ## Architecture and ownership
 
@@ -120,6 +120,61 @@ HTTP_WAIT_TIMEOUT_SECONDS is a finite positive number, default 130. Its clock st
 ReceiptStorageError maps to HTTP 503/storage_unavailable and unexpected service exceptions to 500/internal_error; both have detail.outcome=unknown and sanitized messages. A synchronization-state write failure can produce 503 even though the local saved receipt is retained; GET retrieves that snapshot. Framework validation errors retain their native detail structure. Missing/incorrect API keys return 401/unauthorized. Application HTTP errors otherwise use detail.code/message; raw exception text, filenames, credentials and processing audit metadata are not echoed in those errors. Notification remains not_sent.
 
 Environment names remain APP_API_KEY, MODEL_API_KEY, MODEL_NAME, DATA_DIR, PORT, AIRTABLE_TOKEN, AIRTABLE_BASE_ID, AIRTABLE_TABLE_ID, plus the three limits above and AIRTABLE_TIMEOUT_SECONDS (finite positive, default 15). Imports, Settings.from_env and ASGI lifespan read existing environment variables only and never load .env. For explicit local use, python -m app.main --env-file .env loads only that named file with override=False and interpolate=False before constructing Settings; an absent requested file is an error. Running python -m app.main without the flag or uvicorn app.main:app never implicitly reads dotenv. Deployment injects process environment variables; Compose's existing env_file mechanism injects variables before Python starts. SDK credentials are required only on a new production extraction, not at startup/query/duplicate retrieval or synchronization retry. Offline verification uses substitutes; no real model or Airtable request is authorized or claimed in this assignment.
+
+## Same-origin upload page
+
+GET / serves app/web/index.html without authentication so the user can enter an
+application access key. GET /web/upload.js and GET /web/style.css serve only the
+two fixed public assets. These presentation routes expose no settings or receipt
+data and are excluded from OpenAPI. Existing receipt endpoints and their
+X-API-Key authentication, response shapes and status codes are unchanged.
+FileResponse performs asynchronous file delivery; routes do no business work.
+
+The buildless English HTML/CSS/JavaScript page has a password access-key input,
+one PDF picker, a submit button, a waiting message, result and error regions.
+Submit creates one multipart POST /api/v1/receipts with field file and the exact
+user-entered key in X-API-Key. No key is embedded in source, URL, form body,
+cookies, browser storage or logs. The key remains in the input's memory, with
+autocomplete disabled, and is cleared on pagehide and a cached page restore.
+MODEL_API_KEY and AIRTABLE_TOKEN remain backend-only. The page loads no remote
+assets and follows no API redirects. HTML/assets use no-store, nosniff and
+no-referrer; CSP restricts scripts/styles/connections to the same origin, blocks
+native form submission, framing, plugins, inline scripts and eval.
+
+Submission disables the button, key and file input and uses an in-flight guard
+against duplicate events. Every completion path restores controls and clears the
+waiting indicator. Previous results/errors are hidden on a new valid submission.
+Native required inputs prevent an empty key or missing file; server PDF admission
+remains authoritative. The browser aborts its own wait after 180 seconds,
+including response-body reading. This is independent of the configurable backend
+wait limit and never cancels the server's retained workflow.
+
+The result renders receipt ID, local status, sync status/record ID, merchant,
+date, currency, total, receipt number, subtotal, discount, tax, tip, ordered line
+items and structured validation issues. Decimal strings and original text are
+displayed without conversion/rounding; null is Unknown, never an invented zero.
+All response-derived values use textContent and DOM creation, never HTML parsing.
+Only sync.status=synced has the Synced to Airtable label and success styling.
+saved and needs_review confirm local saving separately; needs_review calls out
+review and skipped synchronization. A known 502 ReceiptResponse retains its
+stored failure ID and does not claim successful processing or validation.
+
+The page handles 401, PDF rejection/size/page errors, all existing synchronization
+states, 500/503/504, malformed responses and connection/browser timeouts. Unknown
+HTTP/transport outcomes never invent receipt IDs, saved state or sync success;
+the user is told processing may continue. It never automatically resubmits,
+polls, queries or calls the synchronization retry API. After processing finishes,
+the user may deliberately submit the identical PDF to retrieve its stored result,
+subject to the existing eligible-unsynced reconciliation behavior. Sync unknown
+continues to require conservative operator reconciliation, with no reset/create
+control in this page. No export or notification control is added.
+
+Browser checks run installed Chrome headlessly with Playwright, actual file
+chooser events and the supplied development A.pdf. A local Uvicorn test server
+uses an injected synthetic extractor and HTTPX MockTransport; other cases mock
+HTTP responses at the browser boundary. Expected answers are not used as API
+results. Missing browser tooling or A.pdf is reported as skipped, never accepted
+as a passed browser check. Screenshots and reports remain ignored local evidence.
 
 ## Airtable synchronization and retry
 

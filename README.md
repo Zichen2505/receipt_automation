@@ -1,6 +1,6 @@
 # Receipt Agent
 
-Authenticated PDF upload and persisted query APIs use the accepted phase 3 local service: discount normalization with audit metadata, deterministic Decimal validation, atomic originals, SQLite, deduplication and interrupted-processing recovery. Eligible saved uploads now attempt Airtable synchronization, persisting record IDs/status with conservative reconciliation and model-free retry. Notifications, UI and deployment remain disconnected; exports return 501. Verification uses offline extractors and simulated HTTP only. No live model/Airtable end-to-end success is claimed.
+FastAPI serves a minimal same-origin upload page and authenticated PDF upload/query APIs. Processing reuses discount normalization with audit metadata, deterministic Decimal validation, atomic originals, SQLite, deduplication and interrupted-processing recovery. Eligible saved uploads attempt Airtable synchronization, persisting record IDs/status with conservative reconciliation and model-free retry. This page assignment is verified only with simulated responses and integrations; prior bounded live acceptance is recorded separately in TASKS.md. Notifications and deployment remain disconnected; exports return 501.
 
 Before taking over, read the four files specified in AGENTS.md. Shared models are implemented only in app/schemas/receipt.py. AIRTABLE_SCHEMA.md at this project root is the sole authority for Airtable mappings; preserve the supplied v1.1 document unchanged. Actual verification results and future tasks are in TASKS.md.
 
@@ -18,7 +18,25 @@ $env:PORT = '8000'
 
 Do not use the placeholder secret. Imports, ASGI startup and the command above read process environment only and never load .env. For an explicit local dotenv file, copy .env.example to .env, edit it privately, then use `.\.venv\Scripts\python -m app.main --env-file .env`. Only that named file is loaded, without overriding existing environment values and without variable interpolation. An absent requested file is an error. Deployment injects environment variables directly; Compose's env_file supplies process variables before Python starts. Neither environment values nor keys are logged. Startup/query need no model credentials. Processing a new production PDF requires MODEL_API_KEY and MODEL_NAME and invokes the real extraction adapter; only offline substitute tests are authorized for this assignment.
 
-In another window run `Invoke-RestMethod http://localhost:8000/health`. Interactive API documentation is at http://localhost:8000/docs . Receipt requests require X-API-Key; stop with Ctrl+C. No upload page was added.
+In another window run `Invoke-RestMethod http://localhost:8000/health`. Open the upload page at http://localhost:8000/ (adjust PORT if configured). Interactive API documentation is at http://localhost:8000/docs . Receipt requests require X-API-Key; stop with Ctrl+C.
+
+## Upload page
+
+1. Open `/` on the running FastAPI server and enter your application access key.
+2. Select one PDF and choose **Upload PDF**. The controls are disabled while the request is pending.
+3. Review extracted details, ordered line items and validation issues. **Saved locally** and **Synced to Airtable** are separate outcomes; synchronization is confirmed only when the API returns `sync.status=synced`.
+
+The page uses plain HTML/CSS/JavaScript under app/web, with no frontend build or framework. Its assets are served at `/web/upload.js` and `/web/style.css`. It sends the entered key only in X-API-Key, never in the URL or multipart body. The application does not persist the key in browser storage; autocomplete is disabled and navigation clears the input. MODEL_API_KEY and AIRTABLE_TOKEN stay on the backend. Response content is displayed as text, including model-derived merchant names, items and validation messages.
+
+The page handles access rejection, invalid/encrypted/oversized PDFs, needs_review, every existing sync state, stored technical failures and unknown outcomes. A failed/unknown sync does not erase local saving. A 504, connection interruption or the page's 180-second request timeout may leave processing active: no local/sync success is inferred. There are no automatic resubmissions or polling. Wait for processing to finish before deliberately submitting the identical PDF to retrieve its stored result; existing backend deduplication/reconciliation rules still apply. Unknown synchronization requires operator reconciliation. This minimal page has no receipt lookup, retry-sync, export or notification controls.
+
+Starting the normal app and submitting a new PDF uses the real production integrations. For this assignment, verification uses only the offline test server and mocks below; no real model or Airtable request is authorized.
+
+```powershell
+.\.venv\Scripts\python -B scripts\offline_regression.py tests/test_web_page.py tests/test_web_browser.py
+```
+
+Browser tests use the pinned Playwright development dependency and an already installed Chrome (`RECEIPT_BROWSER_CHANNEL` defaults to `chrome`; `msedge` can select installed Edge). They run a temporary loopback Uvicorn server, select the user-provided development A.pdf with a real browser file chooser event, submit multipart HTTP, and render injected synthetic extraction/simulated Airtable results. Additional mocked API states cover errors, sync, XSS-safe text, duplicate submission, timeout, null/zero values, mobile layout and key handling. Browser tests explicitly skip when required tooling/browser or the supplied A.pdf is missing. No browser binary is downloaded by the tests. Logs, browser version and a screenshot are retained under the runner's new ignored data/http_api/ directory. Servers and browser contexts are closed after verification.
 
 ## Upload and query contract
 

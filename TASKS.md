@@ -1,9 +1,11 @@
 # Phase 3 handoff and verification record
 
-Latest assignment: offline-verified Airtable synchronization, 2026-10-28.
-See the final section and docs/AIRTABLE_HANDOFF.md for its development branch,
-checks, retry behavior and limits. Earlier phase restrictions/results below are
-historical and are superseded only by the latest explicit user assignment.
+Latest assignment: bounded live connectivity acceptance resumed and passed,
+2026-10-28, after the user privately replaced the local APP_API_KEY. Exactly one
+model extraction and one Airtable creation were made. See the final section for
+actual evidence, IDs, usage, comparisons and limits. The prior startup failure
+remains preserved below; earlier restrictions/results are historical and are
+superseded only by the latest explicit user assignment.
 
 Updated: 2026-10-24 (America/New_York). Phase 3 is complete for local adaptation,
 validation, persistence, querying, deduplication, recovery and offline verification.
@@ -756,3 +758,347 @@ and main/prior-development refs still matched the verified commits above.
 Local PDFs, expected answers, databases, dotenv and all old/new acceptance
 evidence remain excluded from the index. Final commit/push/ref verification is
 reported in the delivery reply; stop after that authorized push.
+
+# Live connectivity acceptance stopped - 2026-10-28
+
+The user explicitly authorized read-only Airtable verification, one development
+PDF upload through authenticated local HTTP, at most one real model extraction
+and at most one Airtable row creation. They required stopping on any failure or
+unknown, without model retries, blind creation, schema changes, deletions or
+state resets. No new business module, UI, notification, export or deployment was
+authorized. This bounded assignment superseded the prior offline-only restriction
+for the intended acceptance, but did not authorize changing credentials.
+
+Read AGENTS.md, PROJECT_SPEC.md, AIRTABLE_SCHEMA.md, TASKS.md and the canonical
+app/schemas/receipt.py before the acceptance attempt. Verified a clean working
+tree, local HEAD and the actual remote feature/receipt-airtable-sync ref at
+74b8542d82929eaf700aa0bd962c755455366c62. Main remained
+f7de7ed2c8a751591331a9e3490412fc65c833b7. No merge or force push was performed.
+
+Loaded only the local project .env for acceptance, with interpolation disabled;
+values were never displayed. A sanitized presence check found all six required
+setting names nonblank, but a presence check does not establish valid credentials.
+A.pdf was a locally inspected candidate: one unencrypted page with explicit
+merchant/date/currency/total and five items. It was not uploaded. No expected
+answer or private/held-out data was read for selection or this acceptance.
+
+Prepared exclusive local evidence under
+data/live_acceptance/20261028T170341Z_cd6c4914/ (ignored by Git).
+The intended isolated DATA_DIR was that directory's store/ subdirectory.
+Temporary acceptance-only launcher/controller files remain there for provenance;
+they are not application modules and contain no credential values. The launcher
+would run the existing app with real transports, suppress credential-bearing logs,
+deny expected/private-file access and enforce durable budgets of one model
+extraction and one Airtable creation across restarts. It substitutes no extraction
+or remote response. The startup failed before these transports or the app were
+initialized, before a listener or receipt store was created.
+
+| Executed command/check | Actual result |
+| --- | --- |
+| Scoped `git ls-remote` for Airtable development/main | Passed; matched the two full commits above |
+| Local dotenv presence-only check | .env exists; APP_API_KEY, MODEL_API_KEY, MODEL_NAME, AIRTABLE_TOKEN, AIRTABLE_BASE_ID and AIRTABLE_TABLE_ID nonblank; no values printed |
+| Local pypdf inspection of development/pdfs/A.pdf | One unencrypted page, 2200 bytes; selection inspection only, no model/text-probe request and no expected read |
+| Syntax/ignore checks of the two local acceptance helpers | Parsed successfully; both paths ignored by Git |
+| Absolute `.venv/Scripts/python.exe -B data/live_acceptance/20261028T170341Z_cd6c4914/server_audit.py 1` (authorized outside sandbox) | Exit 1; Settings.from_env raised ValueError: APP_API_KEY must be set to a non-placeholder secret; process wall time 0.1589859 seconds |
+| Subsequent sanitized configuration classification | Confirmed APP_API_KEY nonblank but equal to the known placeholder; value not displayed or changed |
+| Local evidence capture | startup-failure.json retains error category, unused budgets, absent IDs/usage, unrun checks and source/PDF hashes |
+| `git diff --exit-code HEAD -- app AIRTABLE_SCHEMA.md tests/fixtures/development` | Passed; no application/authority/tracked fixture changes |
+
+Actual request counts for this assignment: model extraction 0; text probes 0;
+Airtable reads 0; Airtable creates 0; local HTTP PDF uploads 0. No receipt_id or
+Airtable record_id was generated. Model usage and extraction duration are not
+applicable, not zero-token evidence of a model request. No server was left running.
+The credential file was not modified; no credentials or evidence were committed.
+
+Outcome: STOPPED / configuration_error at HTTP startup. Per the user's stop rule,
+no attempt was made to fix .env, restart the server, read Airtable, upload/reupload
+the PDF, synchronize, delete a row or reset local state. No paid request occurred.
+
+NOT RUN: target Airtable access/permissions/schema verification; authenticated
+PDF processing; model content extraction/usage; local-to-remote six-column and
+RawJSON comparison; post-extraction comparison against the original PDF; duplicate
+upload/row-count check; service-restart persistence query; regressions, UI,
+notifications, exports and deployment. In particular, neither local/remote
+consistency nor content correctness against the original PDF has been accepted.
+
+Blocker and next step: the user must set a valid non-placeholder APP_API_KEY
+privately in the local .env, then explicitly resume the live acceptance. Do not
+paste credentials into chat. The server-side startup error does not establish
+whether the model or Airtable credentials/permissions are valid. Preserve this
+failed attempt and use fresh, separately recorded evidence for any resumed run.
+The at-most-one model/create budgets were unused in this attempt. Stop here.
+
+# Resumed live connectivity acceptance passed - 2026-10-28
+
+The user explicitly resumed the bounded live acceptance after privately replacing
+APP_API_KEY. Read the required handoff files again and preserved the existing
+TASKS.md change and all prior failure evidence. The updated key passed the existing
+Settings validation. No key was displayed, edited by the agent, placed in a command
+argument or committed. Configuration was loaded from the project-root .env with
+interpolation disabled. Authenticated local HTTP calls used the X-API-Key header.
+
+Local HEAD and the actual remote feature/receipt-airtable-sync ref were verified
+again at 74b8542d82929eaf700aa0bd962c755455366c62. Main still pointed to
+f7de7ed2c8a751591331a9e3490412fc65c833b7. No application module, prompt, shared
+schema, validation rule, fixture or remote schema was changed. No merge or force
+push occurred. This assignment updates the handoff locally; it does not create
+a new implementation commit.
+
+Fresh evidence: data/live_acceptance/20261028T210509Z_521a46dc/ (ignored by Git).
+Isolated DATA_DIR: that directory's store/. The previous failed attempt remains
+unchanged in data/live_acceptance/20261028T170341Z_cd6c4914/. Acceptance-only local
+helpers ran the existing Uvicorn app with real HTTP transports; no extraction or
+response was substituted. Their observation wrappers suppressed logging of secrets,
+denied expected/private-file reads and durably limited model requests and Airtable
+creates to one each across both server processes. No limit-blocked call occurred.
+
+## Actual request ledger
+
+| Request | Count | Actual result |
+| --- | --- | --- |
+| Real model POST /v1/responses with the complete development A.pdf | 1 | HTTP 200, completed; no text probe, fallback or retry |
+| Airtable GET for read-only table/six-field preflight | 1 | HTTP 200; FALSE() filter avoided fetching unrelated rows; 1.875 seconds |
+| Airtable GET for service ReceiptID lookup before create | 1 | HTTP 200, no matching row; 0.312 seconds |
+| Airtable POST for the validated, locally saved receipt | 1 | HTTP 200; exactly one returned record; 0.328 seconds |
+| Airtable GET for independent remote/local comparison | 1 | HTTP 200, exactly one matching ReceiptID; 0.421 seconds |
+| Airtable GET after duplicate upload | 1 | HTTP 200, same single record and field values; 0.422 seconds |
+| Local HTTP GET /health | 1 | HTTP 200 |
+| Local authenticated PDF POST, including the required identical duplicate | 2 | Both HTTP 200; the second invoked no model or Airtable operation |
+| Local authenticated GET after process restart | 1 | HTTP 200; no model or Airtable operation |
+
+Totals: model extraction requests 1; text probes 0; Airtable reads 4; Airtable
+creates 1; updates/deletes/schema writes 0; automatic/manual model retries 0.
+All six external requests returned HTTP 200. Error categories: none in this
+resumed run; unknown outcomes: none. The earlier startup configuration error
+remains a separate historical failed attempt with zero external requests.
+
+## IDs, usage and timing
+
+- Receipt ID: 343e9d7f-df4c-4902-b5e8-61bb3c20c669.
+- Airtable record ID: recrfWVU8Rhsyp2x9.
+- Actual model: gpt-5.6-terra, unchanged from local configuration.
+- Model response ID: resp_0ddae32a3a0631ad016ae263c0a50487d1b2f247f2892489e4.
+- Model request ID: req_1a85029f3f104c8fa4e658590859f609.
+- Usage: 748 input + 172 output = 920 total tokens; cached, cache-write and
+  reasoning tokens all 0. No monetary cost or remaining balance was inferred.
+- Extraction metadata elapsed: 3.6061838001478463 seconds. Transport response
+  observation: 3.3909999998286366 seconds; these measure different boundaries.
+- Initial local upload HTTP elapsed: 4.655999999959022 seconds.
+- Identical duplicate HTTP elapsed: 0.2029999999795109 seconds.
+- Restart query HTTP elapsed: 0.20300000021234155 seconds.
+- Original input: tests/fixtures/development/pdfs/A.pdf, one unencrypted page,
+  2200 bytes, SHA-256 fd98df1bae90f5e9dde7ce127e39e872c114ae3c8c4c8f74515623751dddd968.
+
+## Separate acceptance conclusions
+
+Local-to-remote consistency: PASSED. The first upload returned saved with
+validation.passed=true and sync.status=synced. SQLite retained the original PDF,
+complete data, validation, extraction metadata and returned record ID. An actual
+targeted Airtable GET found exactly one corresponding ReceiptID, with the exact
+six columns Vendor, Date, Amount, Currency, RawJSON and ReceiptID. Amount was a
+JSON number matching the local printed total; RawJSON parsed to the complete
+local data object, including all five ordered items, decimal strings, tip=null
+and discount=null. This establishes consistency, not by itself extraction accuracy.
+
+Content against the original PDF: PASSED in the reviewed text scope. After
+extraction and persistence, independently decoded and manually reviewed the
+original PDF text operators using pypdf, without any expected-answer read. All
+30 scalar/item/count comparisons matched: MAPLE MARKET; 2026-10-12; MM-10482;
+USD; subtotal 30.35; tax 2.43; total 32.78; Apples/Bread/Milk/Coffee/Soap with
+their printed quantities, unit prices and amounts. Tip and discount are not
+printed and correctly remain null. Original text and each comparison are retained
+in original-pdf-text.txt and pdf-content-review.json. This was not a visual render
+or an evaluation of another receipt/model request.
+
+Duplicate prevention: PASSED. Uploading identical original bytes again returned
+the entire same ReceiptResponse, receipt_id and record_id. Request audit showed
+no additional attempted or dispatched model/create request and no budget guard
+intervention. A separate actual Airtable GET still found exactly one corresponding
+row with unchanged fields and the same record ID.
+
+Restart persistence: PASSED. Generation 1 (PID 276832) shut down normally. A new
+process, generation 2 (PID 294416), started the existing app against the same
+isolated DATA_DIR. Its authenticated query returned the unchanged complete
+ReceiptResponse and synced status. A separate local stored-record comparison
+also verified unchanged extraction/usage/audit metadata and original PDF bytes.
+No external request was made on restart or query. Both server processes then
+shut down normally; no acceptance service was left running.
+
+## Executed commands and retained checks
+
+Helper commands below used the project .venv Python with -B and absolute paths
+for authorized outside-sandbox execution where real network access was needed.
+All helpers reside only in the fresh ignored evidence directory, not app/.
+
+| Command/check | Actual result |
+| --- | --- |
+| Scoped git ls-remote | Remote development and main commits matched the verified IDs above |
+| Configuration validation / copy of prior acceptance helpers into fresh directory | Passed; only presence/validity booleans displayed; original failure files preserved |
+| server_audit.py 1 | Existing HTTP app started on loopback with the isolated store |
+| check.py preflight | Passed; actual health and read-only Airtable/six-field request |
+| check.py upload | Passed; one complete PDF, one extraction, one row, stored saved/synced response |
+| check.py verify_remote | All record-ID/six-column/data/RawJSON checks passed against an actual Airtable response |
+| review_pdf.py | 30 post-extraction original-PDF comparisons passed, zero expected reads |
+| check.py duplicate / check.py verify_duplicate | Identical response and one unchanged actual Airtable row |
+| Graceful stop generation 1 / server_audit.py 2 / check.py restart_query 2 | New PID, same persistent result; both process exit codes 0 after graceful stops |
+| finalize.py | 18 retained acceptance invariants passed; acceptance-summary.json written without replacing any earlier evidence |
+| Credential scan of fresh evidence | 36 files checked against actual backend credential values; zero findings; values not printed |
+| git diff --check / git diff --exit-code HEAD -- app AIRTABLE_SCHEMA.md tests | Passed; no business code/authority/test changes |
+
+Retained evidence includes real request timestamps/statuses/counts, usage/request
+IDs, original input hash, the SQLite database and original PDF, initial/duplicate/
+restart responses, actual scoped Airtable snapshots, separate remote/local and
+PDF-content comparisons, server start/stop records, credential audit and the
+final acceptance-summary.json. All remain local and ignored; no credential
+values or evidence were submitted to Git. Only TASKS.md is a tracked change.
+
+NOT RUN: more development PDFs, expected/private/held-out evaluation, visual PDF
+rendering, account-wide uniqueness audit, remote field-configuration/physical-type
+inspection, regression suites, browser UI, notifications, exports or deployment.
+No table/field structure, existing record, local sync state or original receipt
+was modified to force success. The one newly created authorized receipt row is
+retained; it was not deleted as cleanup. This proves the bounded local HTTP-to-
+model-to-Airtable path for this PDF and configuration, not broader production
+readiness. No blocker remains for this bounded acceptance. Stop here; further
+live requests or feature/deployment work require a new explicit assignment.
+
+
+# Minimal upload page handoff - 2026-10-28
+
+The user explicitly assigned a minimal same-origin upload page, offline browser
+verification, documentation, and a new development-branch commit/push. This
+supersedes the historical no-UI restriction only for this assignment. No real
+model/Airtable request, notification, export implementation or deployment was
+performed or authorized. Read AGENTS.md, PROJECT_SPEC.md, AIRTABLE_SCHEMA.md,
+TASKS.md and app/schemas/receipt.py before implementation. All existing TASKS.md
+content, including the two latest live-acceptance records, is preserved as an
+exact byte prefix (compared with the pre-edit local snapshot). Previous evidence
+and original PDFs/answers remain unchanged.
+
+Repository: https://github.com/Zichen2505/receipt_automation.git.
+Development branch: feature/minimal-upload-page, based on
+74b8542d82929eaf700aa0bd962c755455366c62. The pre-push remote check found no
+existing branch with this name. Remote feature/receipt-airtable-sync still
+matched that base commit; main remained
+f7de7ed2c8a751591331a9e3490412fc65c833b7. No merge, reset or force push is used.
+The implementation commit is this section's enclosing commit; the delivery
+response reports its resolved ID and actual push/ref-verification result.
+
+## Delivered behavior
+
+- GET / is the public upload page; GET /web/upload.js and /web/style.css serve
+  its two fixed assets. FastAPI reuses app/web with no frontend framework/build.
+  Presentation routes perform only asynchronous file delivery. Existing receipt
+  routes, shared models, service/integration/storage code, validation rules,
+  API contracts and the sole AIRTABLE_SCHEMA.md v1.1 mapping are unchanged.
+- English, responsive HTML/CSS/JavaScript provides a password access-key input,
+  PDF picker, upload button, waiting message, result and error regions. One
+  same-origin multipart POST uses the existing file field and X-API-Key header.
+  The key never enters source, URL, multipart body, cookies, browser storage or
+  logs. It stays in the input's memory and clears on navigation/cache restore.
+  MODEL_API_KEY and AIRTABLE_TOKEN remain backend-only. CSP, no-store, nosniff,
+  no-referrer and redirect rejection support that boundary.
+- Merchant, date, currency, total, other receipt scalars, complete ordered line
+  items and structured validation issues render through textContent/DOM creation.
+  Original decimal strings remain intact; null displays Unknown, zero stays zero.
+  No response-derived content is interpreted as HTML.
+- Local saved/needs_review is separate from sync; only sync.status=synced gets
+  the Synced to Airtable label and success styling. Failed/unknown/pending/
+  not_configured/skipped are distinct. Known 502 failures retain the stored ID
+  without successful local-processing claims.
+- All in-flight controls are disabled and duplicate submit events are guarded.
+  Previous result/error is hidden for a new submission; controls recover on
+  every completion path. Handles authentication, PDF admission errors, review,
+  synchronization errors, 500/503/504, malformed responses and connection loss.
+  Browser wait is bounded at 180 seconds, including response-body reading;
+  timeout means unknown and does not cancel server processing. No automatic
+  re-upload, query, retry-sync or polling is added.
+- README and PROJECT_SPEC describe entry, usage, security, states, timeouts,
+  offline reproduction and limits. The pinned Playwright dependency is
+  development-only; production requirements and Docker configuration are intact.
+
+## Executed checks and retained results
+
+| Command/check | Actual result |
+| --- | --- |
+| Initial git switch -c | Sandbox denied .git write; no branch created by that failed command |
+| Repository-scoped elevated git switch | Initial ownership check rejected; per-command safe.directory succeeded without changing global Git settings |
+| Initial pip install playwright | Sandbox socket access denied; dependency unavailable in that attempt |
+| Authorized pip install playwright --retries 0 --disable-pip-version-check | Installed playwright 1.64.1, pyee 14.0.0 and greenlet 3.5.6; no browser binary downloaded |
+| First scripts/offline_regression.py tests/test_web_page.py tests/test_web_browser.py | 4 passed, 25 failed, 3 teardown errors; data/http_api/20261028T212114Z_26c6a07d/ retained |
+| Corrected focused page/browser regression, same command | 29 passed, 0 failures/errors/skips, 1 existing warning, 15.22 seconds; data/http_api/20261028T212158Z_3ca2fcec/ |
+| scripts/offline_regression.py | 166 passed, 0 failures/errors/skips, 1 existing warning, 20.01 seconds; data/http_api/20261028T212335Z_fe4fae03/ |
+| acceptance/phase3_independent/run.py --record upload-page-20261028 --snapshot-current | Original 90 cases passed, no failures/errors/skips/guard violations, 8.954 seconds; fresh run snapshot retained |
+| acceptance/airtable_independent/run.py --record upload-page-20261028 | Original 15 cases passed, no failures/errors/skips/guard violations, 1.484 seconds; source hashes unchanged during the run |
+| scripts/verify_airtable_handoff.py | Original assertions, protected tracked files, first-run sources and historical independent evidence all unchanged |
+| .venv/Scripts/python -m pip check | Passed: No broken requirements found |
+| Focused git diff --exit-code HEAD for business/shared/authority/existing-test/acceptance paths | Passed: no changes |
+| git diff --check | Passed |
+| Origin comparison and scoped git ls-remote | Authorized repository matched; main/prior-development refs matched IDs above; new branch absent before push |
+| Pre-edit TASKS.md byte-prefix comparison | Passed; prior work preserved exactly |
+| English project-source/documentation Han scan | No matches; normal rg no-match exit 1 |
+
+All Python commands used the project's .venv and verification runners used -B.
+The first browser-run failures were in new test helpers: expression-string
+wait_for_function invoked eval, correctly blocked by the page CSP. Helpers were
+changed to locator-based DOM waits; no product policy or prior assertion was
+weakened. Its additional JUnit-property warning was removed by writing browser
+metadata to a separate ignored file. The sole final warning is the existing
+Starlette TestClient/AnyIO deprecated alias. The original failed run is preserved.
+
+Actual browser: installed Chrome 156.0.8078.48, headless, driven by Playwright.
+The test opened the page served by a temporary real loopback Uvicorn app, filled
+a synthetic access key, activated the real file-chooser event, selected the
+unchanged development A.pdf, clicked Upload PDF, sent actual multipart HTTP and
+rendered the resulting persisted local saved/synced response. Its extractor
+returned explicitly synthetic data; its Airtable adapter used HTTPX MockTransport
+(one simulated GET and POST). Browser request assertions verified exact original
+PDF bytes/filename, the header-only access key, empty browser storage and no key
+in serialized page source. No expected answer supplied an API result.
+
+Other real-browser cases simulated API states at the HTTP boundary: every sync
+state, needs_review, structured issues, null versus zero, malicious merchant/item/
+issue strings, 401, empty/invalid/encrypted/oversized PDFs, page/body limits,
+500/503/504, durable 502, connection interruption, invalid JSON/response shape,
+pending controls/duplicate events, stale-result clearing, reload key clearing
+and 390-pixel mobile layout. Virtual time exercised the actual 180-second abort
+without weakening the production timeout. No uncaught page JavaScript errors
+occurred in the passing runs. Reviewed browser-synced-desktop.png visually;
+browser.json and screenshots are retained alongside focused/full regression
+JUnit/log/result files, all ignored by Git. Browsers and owned servers closed.
+
+The offline runner removed credentials and blocked real SDK construction,
+external Python network and project dotenv/private-file access. Both page runs
+and full regression reported unchanged authorized input/authority hashes and
+zero guard violations. Browser contexts allowed only the loopback test origin;
+backend transports and browser API simulations had no real model/Airtable access.
+New implementation verification request counts: real model 0, real Airtable 0.
+Prior live acceptance is historical and is not relabeled as page acceptance.
+
+## Limits, unrun checks and stop condition
+
+NOT RUN: live page-to-model-to-Airtable acceptance, Firefox/Safari/Edge, headed
+manual native-dialog review, screen-reader audit, deployment/Docker, notifications,
+export generation, private/held-out evaluation, power-loss/malicious-PDF resource
+isolation, remote schema changes or maintenance. Headless Chrome exercised the
+real chooser event and supplied file, not a human-operated OS dialog. The page
+has no lookup/history, retry-sync, export or notification controls. A custom
+backend wait exceeding 180 seconds may outlast the browser wait; processing
+continues and no success is inferred. The usual single process/worker/event-loop
+per DATA_DIR and conservative unknown-sync reconciliation limits remain.
+
+The local entry after normal startup is http://localhost:8000/ (or configured
+PORT). The normal application uses production integrations; do not upload a new
+PDF as an additional live check without a fresh assignment. No service remains
+running from verification. No active implementation blocker remains. Complete
+staged credential/private-file/whitespace checks, commit/push only this new
+branch, verify remote refs, report results and stop. Future work requires a new
+explicit user assignment.
+
+Final staged review: 11 explicitly selected files; scripts/audit_staged.py passed
+with zero credential/private-file findings. git diff --cached --check passed.
+The staged handoff retains the entire prior TASKS.md prefix after Git newline
+normalization; working-file bytes retain the original exact prefix. English
+source/documentation scan returned no Han matches (normal no-match exit 1).
+Only the new page/tests/docs and development-only test dependencies are staged;
+credentials, PDFs, answers, SQLite and all old/new runtime evidence remain local.
