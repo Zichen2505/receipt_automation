@@ -424,9 +424,10 @@ def test_detached_failure_after_timeout_is_never_reported_as_premature_terminal(
     monkeypatch.setenv("HTTP_WAIT_TIMEOUT_SECONDS", "0.03")
 
     async def scenario():
-        release = asyncio.Event()
+        entered, release = asyncio.Event(), asyncio.Event()
 
         async def broken(*args):
+            entered.set()
             await release.wait()
             raise RuntimeError(PRIVATE_ERROR)
 
@@ -444,6 +445,8 @@ def test_detached_failure_after_timeout_is_never_reported_as_premature_terminal(
                         response = await client.post("/api/v1/receipts", headers=HEADERS,
                             files={"file": ("slow-failure.pdf", pdf(), "application/pdf")})
                         assert response.status_code == 504 and response.json()["detail"]["outcome"] == "unknown"
+                        # The HTTP deadline can expire before the claim reaches disk.
+                        await asyncio.wait_for(entered.wait(), 5)
                         with repository.connection(service.db_path) as db:
                             receipt_id, status = db.execute("SELECT receipt_id,status FROM receipts").fetchone()
                         assert status == "processing"
@@ -451,6 +454,8 @@ def test_detached_failure_after_timeout_is_never_reported_as_premature_terminal(
                         release.set()
                         pending = tuple(app.state.http_tasks)
                         await asyncio.wait_for(asyncio.gather(*pending, return_exceptions=True), 5)
+                # Query completion is a separate assertion, with a normal query budget.
+                app.state.settings = replace(app.state.settings, http_wait_timeout_seconds=5)
                 result = await client.get(f"/api/v1/receipts/{receipt_id}", headers=HEADERS)
                 assert result.status_code == 200 and result.json()["status"] == "failed"
                 assert PRIVATE_ERROR not in result.text

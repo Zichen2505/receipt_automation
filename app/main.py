@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from app.api.routes import health, receipts
 from app.api.uploads import UploadBodyLimitMiddleware
 from app.config import Settings
+from app.integrations.airtable import AirtableClient
 from app.services.receipt_service import ReceiptService
 
 
@@ -22,7 +23,9 @@ async def lifespan(app: FastAPI):
     settings = Settings.from_env()
     await asyncio.to_thread(prepare_data_dir, settings)
     app.state.settings = settings
-    service = ReceiptService(settings.data_dir)
+    service = ReceiptService(settings.data_dir, airtable=AirtableClient(
+        token=settings.airtable_token, base_id=settings.airtable_base_id,
+        table_id=settings.airtable_table_id, timeout_seconds=settings.airtable_timeout_seconds))
     await service.start()
     app.state.receipt_service = service
     app.state.http_tasks = set()

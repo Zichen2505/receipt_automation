@@ -66,6 +66,12 @@ def initialize_database(*, db_path: Path, data_dir: Path) -> None:
             db.execute("""UPDATE receipts SET status='failed', response_json=?, metadata_json=?,
                           original_pdf_ref=?, updated_at=? WHERE receipt_id=? AND status='processing'""",
                        (response.model_dump_json(), metadata.model_dump_json(), ref, now(), response.receipt_id))
+        for row in db.execute("SELECT * FROM receipts WHERE status='saved'").fetchall():
+            response = stored(row).response
+            if response.sync.status == "pending":
+                response.sync = SyncResult(status="unknown")
+                db.execute("UPDATE receipts SET response_json=?, updated_at=? WHERE receipt_id=?",
+                           (response.model_dump_json(), now(), response.receipt_id))
 
 
 def claim_receipt(receipt_id: str, pdf_sha256: str, *, db_path: Path) -> tuple[StoredReceipt, bool]:
@@ -118,3 +124,24 @@ def save_receipt(receipt: ReceiptResponse, *, db_path: Path, original_pdf_ref: s
             (receipt.status, receipt.model_dump_json(), metadata.model_dump_json(), original_pdf_ref, now(), receipt.receipt_id))
         if cursor.rowcount != 1:
             raise ReceiptStorageError("Refusing to overwrite an existing terminal receipt")
+
+
+def update_sync(receipt_id: str, sync: SyncResult, *, db_path: Path) -> ReceiptResponse:
+    """Update only synchronization; preserve the committed local outcome and evidence."""
+    with connection(db_path) as db:
+        db.execute("BEGIN IMMEDIATE")
+        record = stored(db.execute("SELECT * FROM receipts WHERE receipt_id=?", (receipt_id,)).fetchone())
+        if (record is None or record.response.status != "saved" or not record.response.validation.passed
+                or record.response.data is None or record.original_pdf_ref is None):
+            raise ReceiptStorageError("Synchronization requires a locally saved validated receipt")
+        response = record.response
+        if response.sync.status == "synced":
+            if response.sync != sync:
+                raise ReceiptStorageError("Refusing to overwrite confirmed synchronization")
+            return response
+        if (sync.status == "synced") != (sync.record_id is not None):
+            raise ValueError("Only confirmed synchronization has an Airtable record ID")
+        response.sync = sync
+        db.execute("UPDATE receipts SET response_json=?, updated_at=? WHERE receipt_id=?",
+                   (response.model_dump_json(), now(), receipt_id))
+        return response

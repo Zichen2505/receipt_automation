@@ -17,6 +17,7 @@ class Settings:
     max_upload_bytes: int = 10 * 1024 * 1024
     max_pdf_pages: int = 20
     http_wait_timeout_seconds: float = 130.0
+    airtable_timeout_seconds: float = 15.0
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -44,8 +45,14 @@ class Settings:
             raise ValueError("HTTP_WAIT_TIMEOUT_SECONDS must be a finite positive number") from None
         if not math.isfinite(timeout) or timeout <= 0:
             raise ValueError("HTTP_WAIT_TIMEOUT_SECONDS must be a finite positive number")
+        try:
+            airtable_timeout = float(os.getenv("AIRTABLE_TIMEOUT_SECONDS", "15"))
+        except ValueError:
+            raise ValueError("AIRTABLE_TIMEOUT_SECONDS must be a finite positive number") from None
+        if not math.isfinite(airtable_timeout) or airtable_timeout <= 0:
+            raise ValueError("AIRTABLE_TIMEOUT_SECONDS must be a finite positive number")
         return cls(key, os.getenv("MODEL_API_KEY", ""), os.getenv("MODEL_NAME", ""),
                    Path(os.getenv("DATA_DIR", "./data")).resolve(), port,
                    os.getenv("AIRTABLE_TOKEN", ""), os.getenv("AIRTABLE_BASE_ID", ""),
                    os.getenv("AIRTABLE_TABLE_ID", ""), limits["MAX_UPLOAD_BYTES"],
-                   limits["MAX_PDF_PAGES"], timeout)
+                   limits["MAX_PDF_PAGES"], timeout, airtable_timeout)

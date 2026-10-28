@@ -26,7 +26,7 @@ def main():
     os.chdir(ROOT)
     for name in ("APP_API_KEY", "MODEL_API_KEY", "MODEL_NAME", "OPENAI_API_KEY", "AIRTABLE_TOKEN",
                  "AIRTABLE_BASE_ID", "AIRTABLE_TABLE_ID", "DATA_DIR", "PORT", "MAX_UPLOAD_BYTES",
-                 "MAX_PDF_PAGES", "HTTP_WAIT_TIMEOUT_SECONDS"):
+                 "MAX_PDF_PAGES", "HTTP_WAIT_TIMEOUT_SECONDS", "AIRTABLE_TIMEOUT_SECONDS"):
         os.environ.pop(name, None)
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "_" + uuid4().hex[:8]
     evidence = ROOT / "data" / "http_api" / run_id

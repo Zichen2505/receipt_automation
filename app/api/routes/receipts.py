@@ -66,3 +66,19 @@ async def get_receipt(
 @router.get("/{receipt_id}/export")
 async def export_receipt(receipt_id: str, format: Literal["json", "csv"] = "json"):
     unimplemented()
+
+
+@router.post("/{receipt_id}/sync", response_model=ReceiptResponse, responses={
+    401: {"description": "Missing or invalid X-API-Key"},
+    404: {"description": "Receipt not found"},
+    503: {"description": "Synchronization state storage unavailable; local receipt retained"},
+    504: {"description": "Sync waiting timed out; operation continues and outcome is unknown"},
+})
+async def retry_receipt_sync(
+    receipt_id: str, request: Request,
+    service: Annotated[ReceiptService, Depends(get_receipt_service)],
+) -> ReceiptResponse:
+    response = await wait_for_operation(request, service.retry_sync(receipt_id), timeout_code="sync_timeout")
+    if response is None:
+        raise HTTPException(status_code=404, detail={"code": "not_found", "message": "Receipt was not found"})
+    return response

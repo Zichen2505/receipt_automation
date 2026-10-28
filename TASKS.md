@@ -1,8 +1,9 @@
 # Phase 3 handoff and verification record
 
-Latest assignment completed: authenticated upload/query API integration,
-2026-10-28. See the final section and docs/API_HANDOFF.md for its separate
-baseline, branch, executed checks and limits. Earlier entries remain historical.
+Latest assignment: offline-verified Airtable synchronization, 2026-10-28.
+See the final section and docs/AIRTABLE_HANDOFF.md for its development branch,
+checks, retry behavior and limits. Earlier phase restrictions/results below are
+historical and are superseded only by the latest explicit user assignment.
 
 Updated: 2026-10-24 (America/New_York). Phase 3 is complete for local adaptation,
 validation, persistence, querying, deduplication, recovery and offline verification.
@@ -666,3 +667,92 @@ no Han characters in changed project prose/code (rg no-match exit 1). Ignored
 path checks confirmed .env, real PDFs/answers, historical data and original/new
 acceptance evidence remain local. The development commit ID is reported in the
 delivery response and can be resolved from this handoff's enclosing Git commit.
+
+# Airtable synchronization handoff - 2026-10-28
+
+Read AGENTS.md and its four required files before implementation. Confirmed the
+clean working tree and the prior upload/query branch locally and remotely at
+279c9a0ebc3c51e6273deb4ec5a2f30238144ff2. Main remains
+f7de7ed2c8a751591331a9e3490412fc65c833b7. Repository remains
+https://github.com/Zichen2505/receipt_automation.git. This phase uses the separate
+feature/receipt-airtable-sync branch based on the prior development commit;
+no merge or force push is performed. The final commit is this section's enclosing
+commit and is reported in the delivery response.
+
+Implemented eligible Airtable sync strictly after local commit, using the
+unchanged six-column mapper/authority and complete RawJSON. Shared schema and
+validation are unchanged. Sync status and record_id persist independently of
+local saved/data/original/metadata. ReceiptID lookup and durable uncertainty
+before POST protect retries; confirmed IDs prevent repeated creation. Missing
+configuration returns not_configured without HTTP. Definite rejection is failed;
+ambiguous POST outcomes are unknown, and unknown retries only query, never
+blindly create. Startup recovers pending to unknown without network work.
+
+Added authenticated POST /api/v1/receipts/{receipt_id}/sync, using persisted data
+without extraction/model work. Identical uploads also retry eligible unsynced
+records. HTTP routes only delegate; Integration owns HTTP, Service orchestrates,
+Storage persists. AIRTABLE_TIMEOUT_SECONDS defaults to 15, finite positive.
+Runtime HTTPX dependency pins were moved from development without downloads or
+version changes. Updated English specification, README, environment example,
+deployment conventions and AGENTS.md. Details: docs/AIRTABLE_HANDOFF.md.
+
+| Executed command/check | Actual result |
+| --- | --- |
+| Remote branch/main `git ls-remote` | Matched prior commits above; sandbox connection and elevated relative-origin failures resolved using explicit repository path/URL |
+| `.\.venv\Scripts\python -B scripts/offline_regression.py tests/test_airtable_sync.py` | 30 passed, zero failures/errors/skips; data/http_api/20261028T163905Z_07543b46/ |
+| `.\.venv\Scripts\python -B acceptance/airtable_independent/run.py --record first-run` | 13 passed; zero failures/errors/skips/guard violations; original evidence retained |
+| First full regression | 136 passed, 1 failed; data/http_api/20261028T164149Z_c06c4d63/; old 30 ms timeout helper's subsequent query also timed out |
+| Focused detached-failure timeout regression | Both original parameter cases passed; data/http_api/20261028T164249Z_5a2247b1/ |
+| Second full regression | 136 passed, 1 failed; data/http_api/20261028T164332Z_5f692f4a/; helper inspected the claim before it was durably created |
+| `.\.venv\Scripts\python -B scripts/offline_regression.py` final | 137 passed, zero failures/errors/skips; 1 existing AnyIO warning; 5.32 seconds; data/http_api/20261028T164408Z_dea29ead/ |
+| `.\.venv\Scripts\python -B acceptance/airtable_independent/run.py --record deadline-expanded` | 15 passed; zero failures/errors/skips/guard violations; frozen source/test hashes unchanged; 1.547 seconds |
+| `.\.venv\Scripts\python -B acceptance/phase3_independent/run.py --record airtable-20261028 --snapshot-current` | Original 90 passed; zero failures/errors/skips/guard violations; 8.844 seconds |
+| `.\.venv\Scripts\python -B acceptance/phase3_independent/run.py --record airtable-final-20261028 --snapshot-current` | Original 90 passed again; zero failures/errors/skips/guard violations; 8.719 seconds; final source/spec snapshot |
+| `.\.venv\Scripts\python -B scripts/verify_airtable_handoff.py` | Prior assertions unchanged by AST comparison; original independent files/shared schema/validation/authority unchanged; retained historical evidence/first-run source hashes matched |
+| `.\.venv\Scripts\python -m pip check` | No broken requirements |
+| `git diff --check` | Passed |
+
+The only prior-test edit fixes timing in its helpers: await extractor entry
+before inspecting processing storage, and use a normal five-second budget for
+the later query. The initial 30 ms HTTP processing timeout and all original
+assertions are unchanged. No product timeout was weakened. Both initial full-run
+failures remain recorded. The original independent suite/assertions/evidence are
+unchanged. The new separate Airtable suite uses literal contract oracles with no
+prior data/tests, but is authored by the implementation agent and does not claim
+external human review. Two deadline cases were added separately after its first
+13-case run, without changing prior assertions.
+
+All regressions use offline guards; all original development inputs and authority
+hashes matched before/after. Coverage includes six-column/item/null fidelity,
+eligibility, configuration, success/401/403/422/429/408/5xx/transport/invalid-success
+outcomes, duplicates/concurrency, model-free retry, unknown lookup reconciliation,
+pending recovery, restart, sync-state write faults, production HTTP/auth/query,
+adapter and HTTP deadlines, continuation, and unchanged 501 exports.
+
+NOT RUN: real model/Airtable/account/schema/permissions requests, UI, notifications,
+exports, Docker/deployment, destructive crash/power-loss, malicious-PDF resource
+isolation, platform volumes or multi-process operation. The remote table and
+ReceiptID field configuration remain unconfirmed. No remote schema was modified.
+
+Limits: single process/loop/DATA_DIR and fixed Airtable destination; no global
+rate limiter or automatic scheduler (wait at least 30 seconds after 429 before
+retry). Unknown with no matching row requires deliberate operator reconciliation
+under a new assignment; there is no automatic reset/create. Unknown is preserved
+if configuration is removed. Confirmed remote rows are not continuously audited.
+The explicit local-only service mode retains skipped; HTTP always injects the
+adapter. See PROJECT_SPEC.md for these decisions and complete HTTP semantics.
+
+No active implementation blocker remains in the offline assignment. Complete
+staged secret/private-file/whitespace review, commit and push only the development
+branch, verify remote commits, report results and stop. Any live verification,
+maintenance reset, UI, notifications or deployment requires a new assignment.
+
+Final pre-commit review: 23 explicitly selected files staged. Executed
+`.\.venv\Scripts\python -B scripts/audit_staged.py`: passed, zero secret or
+private-file findings. `git diff --cached --check` passed. The English-language
+scan of changed project files found no Han text (normal rg no-match exit 1).
+Remote pre-push check found no existing feature/receipt-airtable-sync branch,
+and main/prior-development refs still matched the verified commits above.
+Local PDFs, expected answers, databases, dotenv and all old/new acceptance
+evidence remain excluded from the index. Final commit/push/ref verification is
+reported in the delivery reply; stop after that authorized push.

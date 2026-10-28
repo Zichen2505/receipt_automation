@@ -1,4 +1,4 @@
-"""Single-process local workflow; remote sync and notifications remain disconnected."""
+"""Single-process workflow with optional Airtable synchronization after local commit."""
 import asyncio
 from collections.abc import Awaitable, Callable
 import hashlib
@@ -9,7 +9,8 @@ from uuid import uuid4
 
 from app.contracts import ReceiptStorageError
 from app.integrations import extractor as model_extractor
-from app.schemas.receipt import ExtractionMetadata, ProcessingMetadata, ReceiptData, ReceiptResponse
+from app.integrations.airtable import AirtableClient
+from app.schemas.receipt import ExtractionMetadata, ProcessingMetadata, ReceiptData, ReceiptResponse, SyncResult
 from app.services.validation import validate_receipt
 from app.storage import files, repository
 
@@ -18,10 +19,12 @@ _runtimes = weakref.WeakKeyDictionary()
 
 
 class ReceiptService:
-    def __init__(self, data_dir: Path, *, extractor: Callable[[bytes, str], Awaitable[ReceiptData]] | None = None):
+    def __init__(self, data_dir: Path, *, extractor: Callable[[bytes, str], Awaitable[ReceiptData]] | None = None,
+                 airtable: AirtableClient | None = None):
         self.data_dir = Path(data_dir).resolve()
         self.db_path = self.data_dir / "receipts.sqlite3"
         self.extractor = extractor
+        self.airtable = airtable
 
     def _runtime(self) -> dict:
         per_loop = _runtimes.setdefault(asyncio.get_running_loop(), {})
@@ -70,7 +73,7 @@ class ReceiptService:
             if not owner:
                 if record.response.status == "processing":
                     raise ReceiptStorageError("Unresolved processing ownership; restart required for recovery")
-                return record.response
+                return await self._sync_saved(record.response)
             response = record.response
             metadata = ProcessingMetadata()
             reference = None
@@ -93,7 +96,6 @@ class ReceiptService:
                 phase = "result_save_failed"
                 await asyncio.to_thread(repository.save_receipt, response, db_path=self.db_path,
                                         original_pdf_ref=reference, metadata=metadata)
-                return response
             except asyncio.CancelledError:
                 runtime["ready"] = False
                 raise
@@ -108,6 +110,48 @@ class ReceiptService:
                     runtime["ready"] = False
                     raise ReceiptStorageError("Processing failed and failure state could not be committed") from None
                 return response
+            # The extraction/local-save error handler must never catch sync failures.
+            return await self._sync_saved(response)
+
+    async def retry_sync(self, receipt_id: str) -> ReceiptResponse | None:
+        task = asyncio.create_task(self._retry_sync(receipt_id))
+        try:
+            return await asyncio.shield(task)
+        except asyncio.CancelledError:
+            await task
+            raise
+
+    async def _retry_sync(self, receipt_id: str) -> ReceiptResponse | None:
+        runtime = self._runtime()
+        async with runtime["lock"]:
+            await self._initialize(runtime)
+            try:
+                response = await asyncio.to_thread(repository.get_receipt, receipt_id, db_path=self.db_path)
+            except Exception:
+                raise ReceiptStorageError("Local receipt query failed") from None
+            return await self._sync_saved(response) if response else None
+
+    async def _sync_saved(self, response: ReceiptResponse) -> ReceiptResponse:
+        if (self.airtable is None or response.status != "saved" or not response.validation.passed
+                or response.data is None or response.sync.status == "synced"):
+            return response
+
+        async def persist(sync: SyncResult) -> ReceiptResponse:
+            try:
+                return await asyncio.to_thread(repository.update_sync, response.receipt_id, sync, db_path=self.db_path)
+            except Exception:
+                raise ReceiptStorageError("Local synchronization state could not be committed; local receipt retained") from None
+
+        uncertain = response.sync.status in {"unknown", "pending"}
+        if not self.airtable.configured:
+            return response if uncertain else await persist(SyncResult(status="not_configured"))
+        await persist(SyncResult(status="unknown" if uncertain else "pending"))
+
+        async def before_create() -> None:
+            await persist(SyncResult(status="unknown"))
+
+        result = await self.airtable.sync_receipt(response, allow_create=not uncertain, before_create=before_create)
+        return await persist(result)
 
 
 async def process_receipt(pdf_bytes: bytes, filename: str) -> ReceiptResponse:
