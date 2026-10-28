@@ -1,6 +1,6 @@
 # Receipt Agent
 
-FastAPI serves a minimal same-origin upload page and authenticated PDF upload/query APIs. Processing reuses discount normalization with audit metadata, deterministic Decimal validation, atomic originals, SQLite, deduplication and interrupted-processing recovery. Eligible saved uploads attempt Airtable synchronization, persisting record IDs/status with conservative reconciliation and model-free retry. This page assignment is verified only with simulated responses and integrations; prior bounded live acceptance is recorded separately in TASKS.md. Notifications and deployment remain disconnected; exports return 501.
+FastAPI serves a minimal same-origin upload page and authenticated PDF upload/query APIs. Processing reuses discount normalization with audit metadata, deterministic Decimal validation, atomic originals, SQLite, deduplication and interrupted-processing recovery. Eligible saved uploads attempt Airtable synchronization, persisting record IDs/status with conservative reconciliation and model-free retry. Current work prepares the existing application for a future Render Docker deployment using offline verification only. No Render service is created or deployed; prior bounded live acceptance is recorded separately in TASKS.md. Notifications remain disconnected; exports return 501.
 
 Before taking over, read the four files specified in AGENTS.md. Shared models are implemented only in app/schemas/receipt.py. AIRTABLE_SCHEMA.md at this project root is the sole authority for Airtable mappings; preserve the supplied v1.1 document unchanged. Actual verification results and future tasks are in TASKS.md.
 
@@ -82,7 +82,53 @@ Discount is a positive reduction magnitude; only discount is normalized, with or
 
 The offline script scripts.phase3_offline_acceptance injects historical outputs as test substitutes and creates isolated evidence under data/phase3/. It never invokes the model. TASKS.md links the executed run, including a sample SQLite database and original PDFs. saved here means local storage and business validation passed; it does not mean reimbursement/payment approval or Airtable synchronization.
 
-## Docker (not verified)
+## Render and Docker preparation (not deployed)
+
+Use the separately pushed chore/render-predeploy branch, based on the existing
+upload-page version; do not default to main. The repository root already contains
+Dockerfile and app/, so Render Root Directory stays blank, Docker build context
+is ., and Dockerfile Path is ./Dockerfile. Select Docker, leave Docker Command
+blank to use python -m app.main, use /health, one instance/worker without reload,
+and mount a persistent disk at /app/data with DATA_DIR=/app/data. The application
+listens on 0.0.0.0 and reads PORT. No Render service or deployment is authorized.
+
+Full field/environment checklist, disk permissions, offline Docker reproduction
+and limits: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). Required production variable
+names are APP_API_KEY, MODEL_API_KEY, MODEL_NAME, AIRTABLE_TOKEN, AIRTABLE_BASE_ID,
+AIRTABLE_TABLE_ID and DATA_DIR; honor platform PORT. Optional limits/timeouts are
+MAX_UPLOAD_BYTES, MAX_PDF_PAGES, HTTP_WAIT_TIMEOUT_SECONDS and
+AIRTABLE_TIMEOUT_SECONDS. Model/Airtable variables are needed for their respective
+business operations, not startup/health. Startup still requires APP_API_KEY;
+/health requires no request key and calls neither service. No .env file is required.
+
+Dockerfile installs all pinned runtime requirements, runs pip check and includes
+the page/static assets. The build context permits requirements.txt and app/
+sources only, then excludes nested credentials, local state, PDFs and evidence.
+The verification harness/substitutes are excluded from the image and normal CMD.
+Database results, extraction metadata, sync status/IDs and original PDFs reside
+under the persistent DATA_DIR. Same-database duplicate protection survives a
+container replacement only when that directory is reused. Cross-database
+deduplication is a known limitation and is not fixed in this phase.
+
+Docker Engine was unavailable during this preparation. The actual build attempt
+failed before building; container acceptance is NOT RUN. To execute later with
+Linux Docker Engine and the unchanged user-provided development A.pdf present:
+
+```powershell
+.\.venv\Scripts\python -B scripts/docker_acceptance.py
+```
+
+This builds the production image, mounts a new isolated evidence/data directory,
+checks default startup/assets/health/auth/write access, injects synthetic extraction
+and simulated Airtable for upload/query, then recreates the default production
+container with the same store and checks persisted results/deduplication. Containers
+have no network; no real service key is forwarded. Results/logs/data remain ignored
+under data/docker/. Exit 2 explicitly reports an unavailable Engine. Local helper
+tests do not count as container acceptance. The minimal GitHub Actions workflow
+runs guarded clean-clone offline suites and a Docker build without service secrets;
+its remote run status is not established by the local checks.
+
+For optional local Compose usage when Docker is available:
 
 ```powershell
 Copy-Item .env.example .env
@@ -93,4 +139,9 @@ Invoke-RestMethod http://localhost:8000/health
 docker compose down
 ```
 
-Docker Engine must be running. The port follows PORT in .env. Named volume receipt-data mounts at /app/data. Stopping containers retains the volume; avoid `down -v`. Phase 3 local records and originals require this persistent volume; without persistent storage, container files cannot be claimed to be reliably saved. Docker execution remains unverified. Containers run as non-root UID/GID 10001; production must not use reload. Platform configuration, volume permissions, and backup requirements are in docs/DEPLOYMENT.md.
+Docker Engine must be running. This optional Compose configuration reads .env;
+Render uses injected environment variables directly. The port follows PORT.
+Named volume receipt-data mounts at /app/data. Stopping containers retains the
+volume; avoid down -v. Containers run as UID/GID 10001; actual mounted-volume
+permissions and persistence require Docker/platform verification. Do not upload
+new PDFs to the default app during offline acceptance: it uses real integrations.

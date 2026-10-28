@@ -1,3 +1,8 @@
+# Only runtime requirements and application sources enter the build context.
+**
+!requirements.txt
+!app/
+!app/**
 .git
 .env
 .env.*
@@ -13,3 +18,29 @@ acceptance
 # Preserve the original directory-name exclusion pattern below.
 **/留出*
 *.pdf
+# Keep sensitive files excluded even if placed below app/.
+**/.env*
+**/.git
+**/.venv
+**/venv
+**/data
+**/tests
+**/acceptance
+**/held_out
+**/held-out
+**/*.pdf
+**/*.PDF
+**/*.sqlite*
+**/*.db*
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/id_rsa*
+**/id_ed25519*
+**/credentials*
+**/secrets*
+**/*.pyc
+**/.aws
+**/.codex
+**/.agents

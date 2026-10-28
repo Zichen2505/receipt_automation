@@ -1102,3 +1102,150 @@ normalization; working-file bytes retain the original exact prefix. English
 source/documentation scan returned no Han matches (normal no-match exit 1).
 Only the new page/tests/docs and development-only test dependencies are staged;
 credentials, PDFs, answers, SQLite and all old/new runtime evidence remain local.
+
+# Render deployment preparation handoff - 2026-10-28
+
+The user explicitly assigned Render preparation, offline regression, local Docker
+acceptance when available, minimal CI, documentation, and a separate branch
+commit/push. Cloud deployment and Render service creation are excluded. This
+supersedes earlier scope restrictions only for this preparation assignment.
+Read AGENTS.md, PROJECT_SPEC.md, AIRTABLE_SCHEMA.md, TASKS.md and
+app/schemas/receipt.py before inspecting/editing. Communication remains Chinese;
+all added project prose/code comments/handoff records remain English. No agent
+delegation, real model request, real Airtable request, schema modification, new
+business feature, export, notification or cloud deployment was performed.
+
+## Version and branch provenance
+
+Initial working tree was clean on feature/minimal-upload-page, local and actual
+remote commit 45d9924455fae15f1bd6494007aa830a18a2dcd8. That commit includes
+the authenticated upload/query API, persisted Airtable synchronization/retry and
+same-origin upload page. Created chore/render-predeploy directly from it; no
+main merge, reset, overwrite or force push. Repository remains
+https://github.com/Zichen2505/receipt_automation.git, with the project itself at
+the Git repository root (not an additional receipt-agent/ subdirectory).
+
+Actual initial remote refs also remained:
+
+- feature/receipt-airtable-sync: 74b8542d82929eaf700aa0bd962c755455366c62.
+- feature/receipt-upload-query-api: 279c9a0ebc3c51e6273deb4ec5a2f30238144ff2.
+- main: f7de7ed2c8a751591331a9e3490412fc65c833b7.
+
+The new branch was absent from the initial remote listing. Initial sandbox
+git ls-remote failed due network restrictions; the repository-scoped elevated
+read succeeded. Branch creation used scoped safe.directory without changing
+global Git configuration. Final commit is this section's enclosing commit; the
+delivery reports its resolved ID and actual push/ref-verification result.
+
+## Prepared configuration
+
+- Preserved the production app and all business interfaces/rules unchanged:
+  environment-only default startup, 0.0.0.0 plus PORT, single worker/no reload,
+  public health/assets, authenticated receipt routes, byte/page/body limits,
+  synchronization behavior, shared models and explicit 501 exports.
+- Dockerfile already installed the complete pinned runtime requirements and
+  copied app/, including app/web. Added build-time pip check and three static
+  asset existence checks. Retained exec-form python -m app.main, non-root
+  UID/GID 10001, /app/data default and Python-only health probe.
+- Restricted .dockerignore to requirements.txt and app/ sources, with subsequent
+  recursive exclusions for environment files, keys, runtime databases/PDFs,
+  evidence, tests, private paths, virtual environments and caches. Scripts, CI,
+  local acceptance evidence, credentials and fixtures are outside the image.
+  The original directory-name exclusion pattern is preserved. Actual image
+  contents/Linux dependency installation are unverified because no image built.
+- Added scripts/docker_acceptance.py as an explicit development-only harness.
+  It builds a unique image, mounts a new isolated store, forwards only synthetic
+  configuration, uses --network none and performs HTTP checks over container
+  loopback. Its helper and original development A.pdf are read-only runtime
+  mounts; they never enter the default production CMD or image. It plans three
+  sequential containers with the same store: default production smoke checks,
+  injected synthetic extraction/HTTPX MockTransport upload-query checks, and
+  recreated default production query/duplicate checks. It checks UID/write
+  access, original hash/bytes, SQLite results/metadata/record IDs, one extraction
+  and two simulated HTTP calls, no extra work on duplicates/restart, and normal
+  shutdown. It does not publish ports or contact real services. The two local
+  helper tests validate the unavailable result and injected-to-production
+  persistence; they are not actual container acceptance.
+- No GitHub Actions workflow existed. Added .github/workflows/offline.yml with
+  read-only repository permissions, Python 3.12 pinned-dependency installation,
+  guarded clean-clone synthetic regression and a production Docker build. No
+  real service secrets, original PDFs, expected answers, historical evidence or
+  browser binaries are provided. One A.pdf-dependent helper test skips in a
+  clean clone. No Render deployment integration/Blueprint is added.
+- README and docs/DEPLOYMENT.md provide the exact Render field/environment
+  checklist, disk ownership and persistent-store rules, reproduction command
+  and actual unverified status. PROJECT_SPEC and AGENTS reflect current scope.
+  Existing startup still requires APP_API_KEY; the /health request itself needs
+  no key and neither model nor Airtable configuration, and makes no external call.
+
+## Executed commands and actual results
+
+All Python checks used the existing project .venv. Offline runners used -B and
+fresh evidence paths. No prior evidence/independent assertion was overwritten.
+
+| Command/check | Actual result |
+| --- | --- |
+| git status --short --branch / branch -vv / log / remote -v / rev-parse --show-toplevel | Clean upload-page branch; correct repository and included API/sync/page history |
+| Scoped elevated git ls-remote --heads | Actual remote matched all four original refs listed above; preparation branch absent |
+| Scoped elevated git switch -c chore/render-predeploy | Created branch from the existing upload-page version |
+| docker version / docker info, sandbox and elevated | Client 29.2.1 exists; default docker_engine and desktop-linux dockerDesktopLinuxEngine pipes absent; no Engine connection |
+| Elevated docker build --tag receipt-agent:render-predeploy . | Failed connecting to Docker Desktop Linux Engine before build; no image built |
+| scripts/docker_acceptance.py, sandbox and elevated | Explicit not_run_docker_unavailable, zero completed stages; latest evidence data/docker/20261028T214850Z_dd7eb75c/; earlier data/docker/20261028T214612Z_219e16de/ retained |
+| scripts/offline_regression.py tests/test_deployment.py | 2 passed, no failures/errors/skips, protected inputs unchanged, no guard violation; data/http_api/20261028T214611Z_ce887a19/ |
+| scripts/offline_regression.py | 168 passed, no failures/errors/skips, 1 existing AnyIO warning, 20.15 seconds; data/http_api/20261028T214814Z_d83c92ec/ |
+| Actions-selected seven test files through scripts/offline_regression.py | 92 passed, no failures/errors/skips, 1 existing warning, 1.85 seconds; data/http_api/20261028T214846Z_0138b95d/ |
+| Initial inline-Python clean-source simulation | Failed before pytest because the temporary copy omitted tracked AIRTABLE_SCHEMA.md; original failed directory data/render-ci/20261028T214922Z_33b0ef29/ retained; no product/assertion change |
+| Corrected fresh inline-Python clean-source simulation including unchanged schema document, excluding fixtures/evidence | 91 passed, 1 explicit absent-A.pdf skip, no failures/errors, protected authority unchanged, no guard violation; data/render-ci/20261028T214931Z_9c0c835b/checkout/data/http_api/20261028T214931Z_dc7a6b79/ |
+| acceptance/phase3_independent/run.py --record render-predeploy-20261028 --snapshot-current | Original 90 passed, no failures/errors/skips/guard violations, 9.093 seconds |
+| acceptance/airtable_independent/run.py --record render-predeploy-20261028 | Original 15 passed, no failures/errors/skips/guard violations, sources unchanged, 1.5 seconds |
+| scripts/verify_airtable_handoff.py | Prior assertions, protected authority/shared/validation/independent files, first-run sources and retained original evidence unchanged |
+| python -m pip check | No broken requirements found in the local Windows environment; not a Linux image installation check |
+| git diff --exit-code 45d9924 -- app AIRTABLE_SCHEMA.md acceptance and all pre-existing tests | Passed; all business code, shared structures, authority and pre-existing/independent assertions unchanged |
+| git diff --check / changed English prose/source Han scan | Passed; no Han matches in changed prose/code; the existing .dockerignore directory pattern is intentionally preserved |
+
+Full regression includes the existing real headless-browser page checks with
+simulated responses/integrations, not live service processing. All offline
+regression/independent runners reported zero guard violations. The full/local
+selected runs retained unchanged authorized input/authority hashes. Original PDFs,
+expected answers, Airtable v1.1, historical evidence and independent assertions
+are unchanged. Actual new real model/Airtable request counts are both zero.
+
+## Unrun checks, blocker and stop condition
+
+Docker blocker: no running Linux Engine is reachable. Docker image build,
+runtime dependency installation/image inspection, actual container startup,
+page/assets/health/authentication inside Docker, mounted UID permissions,
+container upload/query, replacement persistence/deduplication and shutdown are
+NOT RUN. No container acceptance is claimed. Both default and elevated explicit
+prechecks and the actual failed build establish this blocker; no privileged
+daemon/service installation or host configuration change was attempted.
+
+The clean-source simulation validates the selected test set on Windows without
+local data; it is not GitHub-hosted Linux CI. Remote Actions execution/result is
+not established here. Render disk permissions, HTTPS/ingress/timeouts, deployment
+and live processing are unverified. No Render service was created. No real
+model/Airtable call, private/held-out evaluation, export or notification ran.
+
+Known limitation, documented without a fix: identical PDFs in separate databases
+receive separate ReceiptIDs and can duplicate Airtable rows. Same-database
+deduplication requires reusing the same persistent /app/data and fixed Airtable
+destination. Single process/worker/instance remains mandatory; do not add workers
+or silently change destinations. Unknown sync remains conservative.
+
+Future work requires an explicit assignment: start a Linux Docker Engine and
+run the retained harness to establish actual container acceptance, review Actions
+results, then separately authorize any Render service creation/deployment and
+platform/live checks. This assignment stops after staged audit, commit/push and
+remote verification of this preparation branch; no cloud service is created.
+The entire pre-assignment TASKS.md is preserved as an exact byte prefix against
+data/docker/20261028T214850Z_dd7eb75c/tasks-before.md.
+
+Final pre-commit review: all 10 explicitly selected preparation files were
+staged. scripts/audit_staged.py passed with zero credential/private-file findings;
+git diff --cached --check passed. Both the working-byte prefix and Git-normalized
+staged historical TASKS.md prefix matched their pre-assignment versions. Ignore
+checks confirmed .env, original A.pdf and new Docker evidence stay outside Git.
+The final pre-push remote check still had no preparation branch and all four
+original refs matched the IDs above. No daemon/container/server was left running
+by this work. Commit/push only this branch, verify the new ref and original refs,
+report the exact commit/results/checklist and stop without creating a service.
