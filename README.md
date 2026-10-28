@@ -110,9 +110,15 @@ under the persistent DATA_DIR. Same-database duplicate protection survives a
 container replacement only when that directory is reused. Cross-database
 deduplication is a known limitation and is not fixed in this phase.
 
-Docker Engine was unavailable during this preparation. The actual build attempt
-failed before building; container acceptance is NOT RUN. To execute later with
-Linux Docker Engine and the unchanged user-provided development A.pdf present:
+The initial preparation could not reach Docker Engine. The follow-up acceptance
+on 2026-10-28 built commit df878d852a88f548bf42aa5f20fe8a49119704b3 with
+Docker Desktop Linux Engine and passed all existing container checks, including
+default startup/assets/health/auth/write access, simulated upload/query and
+recreated-container persistence/deduplication. All containers had networking
+disabled; real model/Airtable calls were zero. The image's 30 application files
+matched the authorized source manifest exactly. Evidence remains local under
+data/docker/20261028T220021Z_dcff829b/. To reproduce with Linux Docker Engine
+and the unchanged user-provided development A.pdf present:
 
 ```powershell
 .\.venv\Scripts\python -B scripts/docker_acceptance.py
@@ -126,7 +132,10 @@ have no network; no real service key is forwarded. Results/logs/data remain igno
 under data/docker/. Exit 2 explicitly reports an unavailable Engine. Local helper
 tests do not count as container acceptance. The minimal GitHub Actions workflow
 runs guarded clean-clone offline suites and a Docker build without service secrets;
-its remote run status is not established by the local checks.
+its remote run status is not established by the local checks. Actions for the
+accepted commit remains UNCONFIRMED: GitHub CLI was unauthenticated and the
+credential-free Actions API request could not connect. No Render service was
+created or deployed. The follow-up delivery changes documentation only.
 
 For optional local Compose usage when Docker is available:
 
@@ -142,6 +151,6 @@ docker compose down
 Docker Engine must be running. This optional Compose configuration reads .env;
 Render uses injected environment variables directly. The port follows PORT.
 Named volume receipt-data mounts at /app/data. Stopping containers retains the
-volume; avoid down -v. Containers run as UID/GID 10001; actual mounted-volume
-permissions and persistence require Docker/platform verification. Do not upload
+volume; avoid down -v. Containers run as UID/GID 10001. Local isolated bind-mount
+permissions and persistence passed; Render disk behavior is unverified. Do not upload
 new PDFs to the default app during offline acceptance: it uses real integrations.

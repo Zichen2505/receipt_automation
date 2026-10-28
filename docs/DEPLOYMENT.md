@@ -8,12 +8,39 @@ chore/render-predeploy branch. This includes the API, Airtable synchronization
 and upload page. No merge into main, force push, cloud deployment or Render
 service creation is authorized. Actual commands/results are in TASKS.md.
 
-Docker Engine is unavailable on the preparation workstation: both default and
-desktop-linux named pipes were absent. The actual build attempt failed before
-building. Container startup, Linux dependencies, image contents, mount permissions,
-shutdown and persistence acceptance are NOT RUN. Offline helper/regression results
-do not establish Docker acceptance. The new Actions workflow is configuration,
-not evidence that a remote Actions run passed.
+The initial preparation attempt had no reachable Docker Engine and did not run
+container acceptance. A later explicit acceptance assignment on 2026-10-28
+verified commit df878d852a88f548bf42aa5f20fe8a49119704b3 with the now-available
+Docker Desktop Linux Engine. The actual image build, dependency/asset checks and
+all three existing container acceptance stages passed. This supersedes the
+earlier local Docker blocker only; Render deployment remains unperformed.
+
+Evidence: data/docker/20261028T220021Z_dcff829b/ (local and ignored). The default
+production container passed home/static assets, unauthenticated /health,
+receipt authentication, explicit 501 export and UID 10001 mounted-store writes.
+The explicit substitute container passed synthetic extraction, simulated
+Airtable GET/POST, upload/query, originals/results/metadata and duplicate checks.
+A recreated default production container reused that isolated /app/data store,
+queried the same complete record and handled duplicate uploads without another
+extraction or simulated Airtable call. All three containers stopped with exit 0
+and were removed. Containers used --network none; real model/Airtable calls: 0.
+
+An additional image audit confirmed Linux amd64, UID/GID 10001:10001, the default
+CMD, DATA_DIR/PORT defaults and no business secret environment variable names.
+All 30 files under /app exactly matched the authorized app/requirements source
+manifest; there were no extra environment files, PDFs, databases, test harnesses
+or local evidence in the image. Image ID:
+sha256:f6483b4a934818fd87de7792bb6f886949c933416742b6c945d8ad9660205d9e.
+
+GitHub Actions for that exact commit remains UNCONFIRMED. GitHub CLI is installed
+but unauthenticated; the credential-free read of the commit-filtered Actions REST
+endpoint could not connect. Neither failure establishes a passed/failed/absent
+workflow run. No manual workflow dispatch or rerun was requested. Pushing the
+documentation handoff can trigger the existing push workflow. An authenticated
+operator can inspect the repository Actions page and match the full head SHA;
+do not substitute local Docker success for a remote Actions result. The delivery
+commit updates only documentation; application/build/harness/CI sources stay
+identical to the accepted commit. See the latest TASKS.md section for provenance.
 
 ## Render fields for a future authorized deployment
 

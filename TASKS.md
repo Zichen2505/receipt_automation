@@ -1249,3 +1249,107 @@ The final pre-push remote check still had no preparation branch and all four
 original refs matched the IDs above. No daemon/container/server was left running
 by this work. Commit/push only this branch, verify the new ref and original refs,
 report the exact commit/results/checklist and stop without creating a service.
+
+# Follow-up Docker acceptance - 2026-10-28
+
+The user explicitly resumed pre-deployment acceptance from chore/render-predeploy
+at df878d852a88f548bf42aa5f20fe8a49119704b3. Read AGENTS.md,
+docs/DEPLOYMENT.md and the required specification/schema/handoff/shared models.
+Initial branch/HEAD matched the requested version and the working tree was
+clean. No new business rule, feature, independent assertion or fixture change is
+authorized or made. Render service creation/deployment remains excluded.
+
+## Actual Docker acceptance
+
+The existing scripts/docker_acceptance.py was executed once with the existing
+project .venv and repository-scoped elevated access, avoiding a misleading
+sandbox Docker context. Its single initial Engine check succeeded. Docker
+Desktop Linux Engine is now available; no unavailable-engine retry, daemon
+installation, service configuration change or manual intervention was needed.
+
+Evidence is new and ignored: data/docker/20261028T220021Z_dcff829b/.
+The initial pre-deployment failure evidence remains unchanged. The actual build
+installed Linux runtime dependencies, passed pip check and all static-asset
+existence checks, and built receipt-offline-724151251d0f:verification.
+Image ID: sha256:f6483b4a934818fd87de7792bb6f886949c933416742b6c945d8ad9660205d9e.
+
+| Actual command/check | Result |
+| --- | --- |
+| .venv/Scripts/python -B scripts/docker_acceptance.py | Exit 0; status=passed; completed image_build, production, simulated, restart |
+| Default production CMD, PORT=8765, isolated /app/data mount | Passed: homepage, upload.js/style.css, /health without request key or model/Airtable settings, missing/wrong receipt key 401, authorized missing query 404, export 501, UID 10001 directory write/read/delete |
+| Explicit mounted verification server, same isolated store | Passed: supplied unchanged A.pdf admitted; synthetic extraction; simulated Airtable GET then POST; saved/validated/synced result with simulated record ID, query and identical duplicate responses |
+| Recreated container using default production CMD, same store | Passed: complete stored response queried before duplicate upload, unchanged receipt/record IDs and data, duplicates returned identical result without a new extraction or simulated request |
+| Original and SQLite checks inside containers | Passed: exactly one row; original bytes/SHA-256 match the mounted input; persisted response/metadata/raw extraction and sync IDs/status match |
+| All three container stops and removal | Passed: each stopped with exit 0 and was removed; image and isolated evidence/data retained |
+| Separate offline image manifest/configuration audit | Passed: Linux amd64, UID/GID 10001:10001, default python -m app.main, /app WORKDIR, DATA_DIR=/app/data and PORT defaults, no business secret environment variable names |
+| Exact image /app file/hash comparison against requested source manifest | Passed: exactly 30 authorized app/requirements files, no extra .env, PDF, DB, local evidence, tests or verification scripts |
+| Owned-container presence check | Passed: no receipt-offline-724151251d0f container remains |
+
+The production/simulated/restart containers all had --network none and no
+published ports. Only the explicit synthetic APP_API_KEY and PORT/PYTHONPATH
+were passed; no host .env or real business credential was loaded/forwarded. The
+helper and original A.pdf were read-only runtime mounts, absent from the image.
+The exact event journal remained one synthetic_extraction, one
+simulated_airtable_GET and one simulated_airtable_POST across duplicates and
+replacement. Real model requests: 0. Real Airtable requests: 0. No expected
+answer/private/held-out data was used. Startup readiness briefly logged expected
+loopback connection refusals before the app was listening; subsequent checks
+passed. Docker's --time deprecation warning did not affect successful shutdown.
+
+## GitHub Actions verification
+
+For the exact requested head SHA, executed the read-only command:
+gh run list --repo Zichen2505/receipt_automation --commit
+df878d852a88f548bf42aa5f20fe8a49119704b3 --limit 10 --json
+databaseId,headSha,headBranch,status,conclusion,url,name,event,createdAt,updatedAt.
+It exited 1 because GitHub CLI is not authenticated. No token was requested,
+read for authentication, printed or added to the environment.
+
+Then attempted one credential-free GitHub REST read of
+https://api.github.com/repos/Zichen2505/receipt_automation/actions/runs?head_sha=df878d852a88f548bf42aa5f20fe8a49119704b3&per_page=10.
+It could not connect. Sanitized metadata is retained as
+actions-original-commit.json beside Docker result.json/console.txt and
+image-verification.json. Actual Actions status/conclusion/run URL is UNCONFIRMED;
+these access failures do not prove that a workflow passed, failed or is absent.
+No manual dispatch/rerun was requested. The ordinary documentation push can
+trigger the existing push workflow, whose remote result is also unconfirmed.
+
+An authenticated operator can open the repository Actions page, select the
+Offline regression and Docker build workflow and match its full head SHA to the
+requested commit; inspect every job/step and preserve its actual run URL/result.
+Local container success is not a substitute for that remote result. No login or
+credential/configuration change was attempted just to obtain an Actions result.
+
+## Handoff and limits
+
+Only README.md, docs/DEPLOYMENT.md and this appended TASKS.md record are changed.
+No deployment/runtime defect was found, so no code/configuration/assertion fix or
+unaffected regression rerun was needed. The image/application/harness/CI sources
+remain identical to the requested accepted commit; documentation is excluded
+from the Docker context. The original full 168-case regression and independent
+90/15-case results remain historical; they were not rerun or relabeled here.
+Exact pre-follow-up TASKS.md bytes are retained as
+data/docker/20261028T220021Z_dcff829b/tasks-before-followup.md for prefix checks.
+
+Current local Docker blocker is resolved. Remote Actions remains unconfirmed;
+Render disks/ingress/platform shutdown, cloud deployment, live model/Airtable
+acceptance, backups/power loss and cross-database deduplication remain unverified
+or unchanged. This local isolated bind mount is not a Render persistent disk.
+Cross-database deduplication remains the documented known limitation, without a
+fix in this assignment. No Render service, real integration request, export or
+notification was created. Complete documentation/secret/whitespace/protected-file
+review, commit and push only this branch without force or merging main, verify
+remote refs, report the exact final commit and actual results, then stop.
+
+Final documentation review: git diff --check and git diff --cached --check
+passed; scripts/audit_staged.py reviewed exactly three staged documentation
+files with zero credential/private-file findings. The original working-byte and
+staged normalized TASKS.md prefixes are preserved. Ignore checks passed for .env,
+the supplied PDF and the new Docker evidence. A protected-path diff against
+df878d852a88f548bf42aa5f20fe8a49119704b3 was empty for app/, all requirements,
+Dockerfile/.dockerignore, scripts/tests/acceptance, authority and Actions workflow.
+The actual pre-push git ls-remote succeeded: chore/render-predeploy remained at
+the requested base, and main/all earlier development refs retained their prior
+commits. Commit/push the reviewed documentation update without force; the final
+delivery reports its resolved commit and actual remote verification. No new
+container execution is needed for documentation excluded from the image.
