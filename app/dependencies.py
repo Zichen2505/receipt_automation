@@ -9,5 +9,5 @@ def get_settings(request: Request) -> Settings:
 
 
 def get_receipt_service(request: Request) -> ReceiptService:
-    """Available for a later HTTP integration; current business routes remain 501."""
+    """Return the startup-initialized production service; tests may override it."""
     return request.app.state.receipt_service

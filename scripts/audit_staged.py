@@ -1,6 +1,7 @@
 """Reject private runtime files and likely credentials without printing values."""
 
 import json
+import os
 from pathlib import Path, PurePosixPath
 import re
 import subprocess
@@ -17,12 +18,14 @@ def main():
     names = git("diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z").decode().split("\0")
     names = [name for name in names if name]
     # Read locally only for comparison; never print credentials or matching text.
-    secrets = []
+    secret_names = {"APP_API_KEY", "MODEL_API_KEY", "OPENAI_API_KEY", "AIRTABLE_TOKEN"}
+    secrets = [os.environ[name].encode() for name in secret_names
+               if len(os.environ.get(name, "")) >= 8]
     env_path = ROOT / ".env"
     if env_path.exists():
         for line in env_path.read_text(encoding="utf-8-sig").splitlines():
             key, separator, value = line.partition("=")
-            if separator and key.strip() in {"APP_API_KEY", "MODEL_API_KEY", "OPENAI_API_KEY", "AIRTABLE_TOKEN"}:
+            if separator and key.strip() in secret_names:
                 value = value.strip().strip("\"'")
                 if len(value) >= 8 and not value.startswith(("replace-", "your-")):
                     secrets.append(value.encode())

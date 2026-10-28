@@ -1,6 +1,6 @@
 # Receipt Agent
 
-PDF receipt processing project at phase 3: the local service implements discount normalization with audit metadata, deterministic Decimal validation, atomic original-PDF storage, SQLite records/query, duplicate protection, and interrupted-processing recovery. Health checks work; authenticated business HTTP endpoints still explicitly return 501. Airtable, notifications, UI, exports, and deployment are not implemented or enabled. Current local workflow verification reuses historical real outputs offline; no new real model end-to-end run is claimed.
+Authenticated PDF upload and persisted query APIs now use the accepted phase 3 local service: discount normalization with audit metadata, deterministic Decimal validation, atomic originals, SQLite, deduplication and interrupted-processing recovery. Airtable, notifications, UI and deployment remain disconnected; exports return 501. Verification is offline with substitute extractors. No live model/API-to-model end-to-end success is claimed.
 
 Before taking over, read the four files specified in AGENTS.md. Shared models are implemented only in app/schemas/receipt.py. AIRTABLE_SCHEMA.md at this project root is the sole authority for Airtable mappings; preserve the supplied v1.1 document unchanged. Actual verification results and future tasks are in TASKS.md.
 
@@ -16,24 +16,43 @@ $env:PORT = '8000'
 .\.venv\Scripts\python -m app.main
 ```
 
-Do not use the placeholder secret. The HTTP application does not automatically load .env and currently needs no model or Airtable credentials. In another window run `Invoke-RestMethod http://localhost:8000/health`. Interactive API documentation is at http://localhost:8000/docs . Business requests require X-API-Key; POST uses multipart field file. Valid business requests currently return 501. Stop with Ctrl+C.
+Do not use the placeholder secret. Imports, ASGI startup and the command above read process environment only and never load .env. For an explicit local dotenv file, copy .env.example to .env, edit it privately, then use `.\.venv\Scripts\python -m app.main --env-file .env`. Only that named file is loaded, without overriding existing environment values and without variable interpolation. An absent requested file is an error. Deployment injects environment variables directly; Compose's env_file supplies process variables before Python starts. Neither environment values nor keys are logged. Startup/query need no model credentials. Processing a new production PDF requires MODEL_API_KEY and MODEL_NAME and invokes the real extraction adapter; only offline substitute tests are authorized for this assignment.
+
+In another window run `Invoke-RestMethod http://localhost:8000/health`. Interactive API documentation is at http://localhost:8000/docs . Receipt requests require X-API-Key; stop with Ctrl+C. No upload page was added.
+
+## Upload and query contract
+
+| Endpoint | Behavior |
+| --- | --- |
+| POST /api/v1/receipts | Multipart field file; admitted bytes go directly to ReceiptService.process_receipt |
+| GET /api/v1/receipts/{receipt_id} | Persisted ReceiptResponse, including failed results; unknown ID returns 404 |
+| GET /api/v1/receipts/{receipt_id}/export?format=json or csv | Authenticated 501; invalid format 422 |
+
+PDF media type is application/pdf or application/octet-stream; content must have a PDF header and a readable, unencrypted PDF structure with at least one page. Filename suffix is not proof of format. Empty upload: 400; unsupported media/header: 415; malformed/zero-page/encrypted PDF: 422. MAX_UPLOAD_BYTES (default 10485760) and MAX_PDF_PAGES (default 20) are positive integers; exceeding either returns 413. Total multipart bytes, including overhead, are also limited to MAX_UPLOAD_BYTES + 65536 before parsing can spool an unlimited body. Counts do not trust Content-Length; overflow closes existing multipart temporary files. That envelope check can precede authentication and return 413. Parser validation is not a malicious-document sandbox.
+
+Both saved and needs_review return 200 with the existing ReceiptResponse. saved means only locally committed and validation passed. A durably stored technical failed result returns 502 with its ReceiptResponse and queryable ID; an identical resubmission reuses that failure without a new model call. GET of any stored status returns 200. sync is always skipped and notification is always not_sent.
+
+HTTP_WAIT_TIMEOUT_SECONDS (default 130, finite and positive) bounds waiting for Service after admission, including its lock; it also bounds query waiting. A 504 processing_timeout/query_timeout has detail.outcome=unknown and never means failed/completed. Processing is shielded and retained after timeout/disconnection; queries may time out behind it. After processing finishes, resubmit identical bytes to obtain the stable ID/result. No progress or hash-query endpoint exists. The model SDK's own 120-second timeout remains unchanged. Storage unavailable returns sanitized 503; unexpected service errors return sanitized 500; neither claims a terminal outcome. Graceful shutdown waits for retained operations, while forced termination uses startup recovery. Upload reading/PDF parsing are outside the Service wait clock, and the application does not impose a hard process or ingress deadline. See PROJECT_SPEC.md for complete error codes and limits.
 
 ```powershell
-.\.venv\Scripts\python -m pytest -q
+.\.venv\Scripts\python -B scripts\offline_regression.py
+.\.venv\Scripts\python -B acceptance\phase3_independent\run.py --record local-review-01 --snapshot-current
 .\.venv\Scripts\python -m pip check
 ```
 
 Contract tests use separate temporary directories and labeled synthetic data. User development PDFs belong in tests/fixtures/development/pdfs/ and expected JSON in tests/fixtures/development/expected/. Compatibility tests unwrap data and verify the matching PDF exists. Never translate original receipts or edit expected answers. Do not use private evaluation or held-out answers.
 
+Full historical regression needs the authorized local fixtures and prior phase 2/2B evidence, which deliberately stay outside Git. A fresh clone can run the synthetic HTTP suite with `scripts\offline_regression.py tests/test_http_receipts.py`, plus independent acceptance with --snapshot-current. The offline regression runner removes application configuration/credentials, blocks real SDK/external network/project .env access (including child interpreters), allows loopback for health checks, and saves fresh ignored results under data/http_api/. Independent assertions are unchanged; its runner supports a new per-run snapshot instead of replacing the original accepted baseline. All original independent evidence remains local and ignored. Use a unique --record name; evidence files are exclusive-create. TASKS.md records the executed commands, baseline commit and development handoff.
+
 ## Phase 2 verification evidence
 
-The authorized text probe and A.pdf request are complete; see TASKS.md for results and artifact paths. The local modules scripts.phase2_probe, scripts.phase2_extract_a, and scripts.phase2_compare_a implement the staged workflow. Do not rerun the first two without an explicit new request: they send paid model requests. Only these explicit runners load project-root .env, preserving existing environment values and disabling interpolation. MODEL_API_KEY is passed explicitly to the SDK and MODEL_NAME is used without fallback. Retries are disabled. The independent comparison runner is offline and reads expected/A.json only after actual output is saved. No complete processing API returns saved.
+The authorized historical text probe and A.pdf request are complete; see TASKS.md for results and artifact paths. The local modules scripts.phase2_probe, scripts.phase2_extract_a, and scripts.phase2_compare_a implement the staged workflow. Do not rerun the first two without an explicit new request: they send paid model requests. Those explicit experiment runners load project-root .env, preserving existing environment values and disabling interpolation, like the new explicitly flagged local API runner. MODEL_API_KEY is passed explicitly to the SDK and MODEL_NAME is used without fallback. Retries are disabled. The independent comparison runner is offline and reads expected/A.json only after actual output is saved. This historical extraction evidence is not a live run of the new HTTP processing API.
 
 Phase 2B is also complete: scripts.phase2b_extract made one request each for B/C/D/F using the unchanged extractor and prompt, without a new text probe or A call. scripts.phase2b_compare is the separate offline step; it compares stored results using Decimal, reports decimal-format-only differences separately, and reuses A's earlier evidence. B/C/F matched; D's printed negative discount was returned as -7.10 while the answer expects the positive magnitude 7.10. This remains a recorded mismatch, not a formatting issue. No paid reruns or prompt changes were made. Detailed five-sample results are in TASKS.md and ignored data/phase2b/ artifacts. Run the full offline suite without exclusions; do not rerun paid scripts without another assignment.
 
 ## Phase 3 local workflow
 
-The programmatic entry point is app.services.receipt_service.ReceiptService(data_dir). Its async start/process_receipt/get_receipt methods use the configured directory for receipts.sqlite3 and originals/{receipt_id}.pdf. The module-level process_receipt wrapper uses DATA_DIR. Calling the production process method on a new PDF invokes the model; no such call is authorized during the current phase. HTTP routes are deliberately disconnected and remain 501.
+The programmatic entry point is app.services.receipt_service.ReceiptService(data_dir). Its async start/process_receipt/get_receipt methods use the configured directory for receipts.sqlite3 and originals/{receipt_id}.pdf. The module-level process_receipt wrapper uses DATA_DIR. Upload/query routes now delegate to this same service through get_receipt_service. Tests explicitly inject substitutes or mock the production request adapter; no real model call is authorized during this assignment.
 
 Discount is a positive reduction magnitude; only discount is normalized, with original/normalized values and reason retained in metadata. Unknown optional amounts stay null and incomplete formulas are skipped. See PROJECT_SPEC.md for exact validation applicability, concurrency and crash-recovery behavior. Duplicate bytes reuse the same terminal record, including failed records, without a model retry.
 

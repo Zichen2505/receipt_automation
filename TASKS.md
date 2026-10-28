@@ -1,5 +1,9 @@
 # Phase 3 handoff and verification record
 
+Latest assignment completed: authenticated upload/query API integration,
+2026-10-28. See the final section and docs/API_HANDOFF.md for its separate
+baseline, branch, executed checks and limits. Earlier entries remain historical.
+
 Updated: 2026-10-24 (America/New_York). Phase 3 is complete for local adaptation,
 validation, persistence, querying, deduplication, recovery and offline verification.
 Stop here. No new model request, Airtable connection, UI/export/notification work,
@@ -589,3 +593,76 @@ flow or run any live service/model/deployment work.
 Final read-only checks: all 29 frozen hashes still match; the prior TASKS.md
 content is preserved as an exact byte prefix. `rg -n '\p{Han}'
 acceptance/phase3_independent` returned no matches (normal no-match exit 1).
+
+# Upload/query API integration handoff - 2026-10-28
+
+Repository: https://github.com/Zichen2505/receipt_automation.git.
+receipt-agent is the verified Git root. The remote was empty. Initialized main,
+reviewed/staged 61 safe files, committed and pushed baseline
+f7de7ed2c8a751591331a9e3490412fc65c833b7. Development is on the separate
+feature/receipt-upload-query-api branch, without merging or force-pushing. The
+earlier missing-Git provenance blocker is resolved for this baseline forward;
+it does not retroactively create a historical commit for the original run.
+
+Scope: POST/GET now delegate to existing ReceiptService, retaining X-API-Key.
+Added actual PDF admission, configurable byte/page limits, bounded multipart
+parsing, sanitized errors, and HTTP wait timeouts that keep work alive without
+inventing a terminal outcome. Graceful shutdown waits for retained operations.
+Exports remain 501; sync=skipped and notification=not_sent. Shared models,
+validation and storage code remain unchanged. Service behavior is unchanged;
+only its stale docstring was corrected. PROJECT_SPEC.md, README.md, environment
+example, deployment conventions and AGENTS.md reflect the user-authorized scope.
+Explicit local --env-file loading never overrides existing environment variables
+and disables interpolation; imports/ASGI startup never implicitly read dotenv.
+
+| Executed command/check | Actual result |
+| --- | --- |
+| Git remote read/init/root/stage/audit/commit/push | Remote had no refs; main baseline above pushed without replacing existing work; initial sandbox/ownership failures handled by scoped elevated commands |
+| `.\.venv\Scripts\python -m pip install pypdf==6.21.3 --no-deps` | Succeeded after querying the index with network authorization; parser pinned in requirements.txt |
+| `.\.venv\Scripts\python -B scripts\offline_regression.py tests/test_http_receipts.py` | Initial 37 passed; expanded final HTTP-only run 42 passed; both saved locally |
+| `.\.venv\Scripts\python -B scripts\offline_regression.py` | Final 107 passed, 0 failed/errors/skipped, 1 existing AnyIO deprecation warning in 4.77 seconds |
+| `.\.venv\Scripts\python -B acceptance\phase3_independent\run.py --record upload-query-20261028 --snapshot-current` | Original 90 cases passed; 0 failed/errors/skipped; source/contract frozen throughout run; 8.532 seconds |
+| `.\.venv\Scripts\python -m pip check` | Passed: no broken requirements |
+| `git diff --check` and focused baseline diff/hash comparisons | Passed; independent test files/assertions byte-unchanged, original evidence hashes unchanged; shared schema, validation, storage and supplied Airtable authority unchanged |
+
+Final local evidence: data/http_api/20261028T093620Z_95e0141b/ and
+acceptance/phase3_independent/upload-query-20261028.*. Original independent
+evidence remains preserved alongside it, excluded from Git. Regression guards
+removed application credentials, blocked actual SDK/external network/root .env
+access in parent/children, and recorded zero violations. Authorized fixture and
+authority hashes are unchanged. No real model call was made. Two old upload/query
+501 stub expectations were superseded by new HTTP cases; independent acceptance
+assertions were not modified. The independent runner gained only explicit new
+run-name/current-snapshot support; the original freeze/evidence was not replaced.
+
+Coverage includes valid upload/query, authentication, invalid/empty/zero-page/
+encrypted PDF, exact byte/page limits, multipart overflow and spool cleanup with
+misleading/missing Content-Length, duplicate/same-name PDFs, business review,
+durable extraction/storage faults, uncommittable failure recovery, production
+adapter wiring with an offline double, 504 continuation to saved/failed, query
+timeouts, request cancellation, graceful shutdown, and dotenv/limit configuration.
+
+Secrets, .env copies, real PDFs, databases, original fixtures, runtime data and
+acceptance logs/JSON/reports/snapshots remain excluded. scripts/audit_staged.py
+checks the staged index against local/environment credential values and common
+credential patterns without printing matching values. See docs/API_HANDOFF.md
+for the detailed retained commands, results, implementation and limits.
+
+NOT RUN: live model-backed HTTP, Airtable, UI/browser uploads, exports,
+notifications, Docker/deployment, destructive crash/power-loss or malicious-PDF
+resource tests. No final public URL-to-Airtable success is claimed. Single
+process/worker/event loop per DATA_DIR remains mandatory. Upload/parser/ingress
+deadlines and resource isolation are not provided; a 504 leaves the result
+unknown and does not stop processing. Full historical regression requires the
+authorized local fixtures/history, deliberately absent from the remote repository.
+
+No active implementation blocker remains. Next step is user review of the
+development branch; live model/Airtable/UI/deployment requires a new assignment.
+After committing and pushing this handoff, stop and wait for review.
+
+Final pre-commit review: 23 staged development files, zero secret/private-file
+audit findings, clean cached whitespace check. The English-language scan found
+no Han characters in changed project prose/code (rg no-match exit 1). Ignored
+path checks confirmed .env, real PDFs/answers, historical data and original/new
+acceptance evidence remain local. The development commit ID is reported in the
+delivery response and can be resolved from this handoff's enclosing Git commit.

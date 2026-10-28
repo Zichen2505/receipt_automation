@@ -50,8 +50,6 @@ def test_authentication(client, key, method, path):
 
 
 @pytest.mark.parametrize("method,path", [
-    ("post", "/api/v1/receipts"),
-    ("get", "/api/v1/receipts/missing"),
     ("get", "/api/v1/receipts/missing/export?format=json"),
     ("get", "/api/v1/receipts/missing/export?format=csv"),
 ])

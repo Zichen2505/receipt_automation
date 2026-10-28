@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import socket
 import sys
 import time
@@ -128,10 +129,26 @@ def main():
             return int(bool(VIOLATIONS))
 
         parser = argparse.ArgumentParser(description=__doc__)
-        parser.add_argument("--record", choices=("first-run", "resource-fix-run"), default="first-run")
-        record_name = parser.parse_args().record
+        parser.add_argument("--record", default="first-run")
+        parser.add_argument("--snapshot-current", action="store_true",
+                            help="Freeze this authorized revision without replacing the original baseline")
+        args = parser.parse_args()
+        record_name = args.record
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", record_name):
+            parser.error("Record name must contain only letters, digits, underscores or hyphens")
 
-        baseline = json.loads((HERE / "baseline.json").read_text(encoding="utf-8"))
+        if args.snapshot_current:
+            paths = sorted([p for p in (ROOT / "app").rglob("*")
+                            if p.is_file() and "__pycache__" not in p.parts]
+                           + [ROOT / name for name in ("AGENTS.md", "PROJECT_SPEC.md", "AIRTABLE_SCHEMA.md",
+                                                      "requirements.txt", "requirements-dev.txt")])
+            baseline = {"sha256": {p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+                                   for p in paths}, "scope": "Current authorized revision, frozen for this run"}
+            with (HERE / f"{record_name}.baseline.json").open("x", encoding="utf-8") as output:
+                json.dump(baseline, output, indent=2)
+                output.write("\n")
+        else:
+            baseline = json.loads((HERE / "baseline.json").read_text(encoding="utf-8"))
         before = frozen_check(baseline)
         if not before["unchanged"]:
             raise RuntimeError("Frozen source/contract baseline changed before execution")

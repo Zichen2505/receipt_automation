@@ -7,6 +7,7 @@
 .pytest_cache
 data
 tests
+acceptance
 **/evaluator_private
 **/holdout*
 # Preserve the original directory-name exclusion pattern below.

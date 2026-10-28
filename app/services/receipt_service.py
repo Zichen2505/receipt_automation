@@ -1,4 +1,4 @@
-"""Single-process local workflow; HTTP, remote sync and notifications remain disconnected."""
+"""Single-process local workflow; remote sync and notifications remain disconnected."""
 import asyncio
 from collections.abc import Awaitable, Callable
 import hashlib

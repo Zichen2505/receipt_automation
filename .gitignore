@@ -16,6 +16,7 @@ evaluator_private/
 # Local receipts, runtime state, and original acceptance evidence stay private.
 *.pdf
 *.sqlite
+*.sqlite-*
 *.sqlite3
 *.db
 *.db-*
@@ -24,6 +25,7 @@ evaluator_private/
 **/held_out/
 **/held-out/
 acceptance/**/*.json
+acceptance/**/*.jsonl
 acceptance/**/*.console.txt
 acceptance/**/first-run-source/
 acceptance/**/REPORT.md
