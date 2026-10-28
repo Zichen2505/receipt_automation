@@ -1,0 +1,14 @@
+services:
+  receipt-agent:
+    build: .
+    env_file: .env
+    environment:
+      DATA_DIR: /app/data
+    ports:
+      - "${PORT:-8000}:${PORT:-8000}"
+    volumes:
+      - receipt-data:/app/data
+    restart: unless-stopped
+    stop_grace_period: 30s
+volumes:
+  receipt-data:

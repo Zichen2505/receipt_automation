@@ -1,0 +1,14 @@
+.git
+.env
+.env.*
+.env*
+.venv
+**/__pycache__
+.pytest_cache
+data
+tests
+**/evaluator_private
+**/holdout*
+# Preserve the original directory-name exclusion pattern below.
+**/留出*
+*.pdf

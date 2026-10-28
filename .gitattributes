@@ -1,0 +1,3 @@
+# Preserve the supplied mapping authority and original inputs byte-for-byte.
+AIRTABLE_SCHEMA.md -text
+tests/fixtures/** -text
