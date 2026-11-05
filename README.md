@@ -1,8 +1,39 @@
 # Receipt Agent
 
-FastAPI serves a minimal same-origin upload page and authenticated PDF upload/query APIs. Processing reuses discount normalization with audit metadata, deterministic Decimal validation, atomic originals, SQLite, deduplication and interrupted-processing recovery. Eligible saved uploads attempt Airtable synchronization, persisting record IDs/status with conservative reconciliation and model-free retry. Current work prepares the existing application for a future Render Docker deployment using offline verification only. No Render service is created or deployed; prior bounded live acceptance is recorded separately in TASKS.md. Notifications remain disconnected; exports return 501.
+FastAPI serves the existing upload page and authenticated receipt APIs, plus opt-in durable server-to-server extraction jobs. Both workflows reuse structured extraction, discount normalization and deterministic Decimal validation; new jobs have independent persistence, idempotency and interruption recovery and never synchronize to Airtable. Legacy receipt synchronization and response contracts remain unchanged. This milestone implements the extraction-job application contract with offline verification only. No Render service is created or deployed; actual results and historical acceptance are recorded in TASKS.md. Notifications remain disconnected; exports return 501.
 
 Before taking over, read the four files specified in AGENTS.md. Shared models are implemented only in app/schemas/receipt.py. AIRTABLE_SCHEMA.md at this project root is the sole authority for Airtable mappings; preserve the supplied v1.1 document unchanged. Actual verification results and future tasks are in TASKS.md.
+
+## Durable extraction jobs
+
+The application developer's complete contract and future NEW isolated Render
+service checklist are in [docs/EXTRACTION_API_HANDOFF.md](docs/EXTRACTION_API_HANDOFF.md).
+POST /api/v1/extractions accepts one PDF with a client-persisted canonical UUID
+in Idempotency-Key; GET /api/v1/extractions/{request_id} reads durable status.
+Creation returns 202 without waiting for the model; identical terminal retries
+return 200. Never create a new UUID automatically after a timeout or GET 404.
+The application must authorize employee/document ownership before proxying calls
+and preserve the entire extraction snapshot before employee corrections.
+
+Jobs are disabled by default. Enabling EXTRACTION_JOBS_ENABLED=true requires a
+dedicated EXTRACTION_API_KEY (different from APP_API_KEY), stable
+EXTRACTION_INTEGRATION_SCOPE, MODEL_API_KEY and MODEL_NAME. Existing APP_API_KEY
+startup/legacy authentication stays required. New credentials are server-only.
+Persist DATA_DIR with one instance/process/worker; jobs live in its separate
+extraction_jobs directory. Defaults: EXTRACTION_MAX_ACTIVE_JOBS=32,
+EXTRACTION_CONCURRENCY=1, EXTRACTION_SHUTDOWN_GRACE_SECONDS=10. Queued work resumes
+after restart; uncertain processing becomes unknown without automatic resend.
+No new UI, employee/approval/payment database, reset/retry endpoint or external
+worker is added. Leave all Airtable settings absent on the proposed isolated
+service. Deployment and live model requests require a future explicit assignment.
+
+```powershell
+.\.venv\Scripts\python -B scripts\offline_regression.py tests/test_extraction_jobs.py
+```
+
+The upload-page, receipt API and older deployment notes below describe the
+preserved legacy workflow. Use the new handoff's branch/configuration/checklist
+for future extraction-service preparation, not its historical Airtable checklist.
 
 ## Windows local setup (PowerShell, Python 3.12)
 

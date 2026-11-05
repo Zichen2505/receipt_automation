@@ -1,14 +1,88 @@
 # PDF receipt processing specification
 
-Current phase: Render deployment preparation for the existing API, Airtable synchronization and same-origin upload page. Business rules and HTTP/shared-model interfaces remain unchanged. Verification is offline with injected extractors and simulated HTTP only; no real model/Airtable request, Render service creation or cloud deployment is authorized. Exports remain 501 and notifications stay disconnected. Prior live acceptance and the upload-page assignment are recorded separately in TASKS.md.
+Current phase: opt-in durable extraction jobs for an existing expense application, on feature/extraction-jobs from reviewed baseline 4e5cad9ccbec0cc5261233f15a753e031e7c4d7b. New job interfaces extend the canonical models without changing legacy receipt contracts, business rules, upload page or Airtable behavior. Verification is offline with generated fictional PDFs, injected extractors and simulated HTTP only. No real model/Airtable request, notification, payment, company-record change, Render change or deployment is authorized. Exports remain 501. Historical assignments/results remain in TASKS.md.
 
 ## Architecture and ownership
 
-Single instance, single process, single asyncio event loop. API owns HTTP/authentication/parameters; Service orchestrates; Integration adapts model/external data; Storage owns SQLite and files. No microservices, task queues, or multi-Agent orchestration.
+Single instance, single process, single asyncio event loop. API owns HTTP/authentication/parameters; Service orchestrates; Integration adapts model/external data; Storage owns SQLite and files. The authorized extraction-job store and lifespan-managed execution loop remain inside that process. No microservices, external task queues, worker services, or multi-Agent orchestration.
 
 The current flow is upload → extraction → validation → local save → eligible Airtable synchronization → response. Notifications remain disconnected. saved means locally committed and validation passed, never reimbursement/payment approval or synchronization.
 
 Shared data structures are defined only in app/schemas/receipt.py. AIRTABLE_SCHEMA.md remains the unchanged sole authority for Airtable mappings.
+
+## Durable extraction jobs (current milestone)
+
+The complete new integration contract, examples, state machine, error table,
+configuration, application ownership obligations and future isolated-service
+checklist are in [docs/EXTRACTION_API_HANDOFF.md](docs/EXTRACTION_API_HANDOFF.md).
+The remaining receipt sections below describe the preserved legacy workflow;
+their locking, HTTP waiting and recovery rules do not apply to new jobs.
+
+POST /api/v1/extractions accepts exactly one admitted multipart file and a
+canonical client UUID in Idempotency-Key. GET /api/v1/extractions/{request_id}
+only reads persisted state. Both require a dedicated server-only X-API-Key from
+EXTRACTION_API_KEY, scoped by stable EXTRACTION_INTEGRATION_SCOPE, independent
+of credential rotation. The application must enforce employee/document ownership
+before every creation/proxied query; this backend has no employee identity input.
+
+Shared additions in app/schemas/receipt.py are ExtractionVersion,
+ExtractionConfiguration, ExtractionJobError, ExtractionJobResponse and
+StoredExtractionJob. ExtractionJobResponse always contains request_id, status,
+created_at, updated_at, data, validation, error and extraction_version. It reuses
+ReceiptData/ValidationResult, including complete items, decimal strings and nulls.
+Internal configuration/raw evidence is never included in HTTP responses.
+
+queued means committed executable input; processing is committed before model
+dispatch; completed requires successful extraction and passing receipt validation;
+needs_review contains structured data and validation issues; failed is a terminal
+technical failure; unknown is interrupted/uncertain work with no usable result
+assumed and explicit operator recovery required. All terminal keys are sticky.
+POST is 202 for unfinished jobs, 200 for identical terminal retries, 409 for
+changed bytes. GET is 200 for every published state and 404 for an unknown or
+not-yet-published reservation; 404 never excludes a still-completing prior POST.
+Both routes share existing file/page/total-body admission limits.
+
+Jobs use DATA_DIR/extraction_jobs/jobs.sqlite3 (schema version 1) and separate
+originals, not the legacy database/recovery/lock. BEGIN IMMEDIATE, primary key
+(scope, request_id), guarded state transitions and a durable PDF readiness barrier
+coordinate acceptance. A positive bounded active capacity includes accepting,
+queued and processing. A lifespan loop runs at most EXTRACTION_CONCURRENCY
+extractors without a database transaction or legacy lock during model work.
+GET can return while a model is blocked. An ordinary loop failure is contained.
+
+Startup resumes valid queued work, marks interrupted accepting/processing unknown,
+and rejects corrupt/missing inputs. Before dispatch, integrity and executable
+pipeline compatibility are rechecked. Original hash, selected model/prompt/schema,
+limits/version/fingerprint and internal evidence are persisted. New defaults do
+not reinterpret old jobs; an unavailable pipeline produces unknown without a call.
+Shutdown stops claims, finishes admission durability, waits a bounded extraction
+grace and marks cancelled processing unknown where possible. Persisted queued
+work survives; a disk cannot guarantee an external request was cancelled.
+
+EXTRACTION_JOBS_ENABLED defaults false, preserving existing startup configuration.
+Enabled invalid credentials/scope/model/capacity/concurrency/grace/storage fail
+closed. Durable deployment requires one instance/process/worker, no reload and a
+persistent DATA_DIR. There is no external queue, automatic model retry, public
+reset, global hash-based sharing, result export, notification or payment path.
+Retention, backup, pipeline migration and unknown recovery require controlled
+maintenance; no automatic input deletion occurs. AIRTABLE_SCHEMA.md is unchanged.
+
+| New/extended interface | Execution and behavior |
+| --- | --- |
+| ExtractionJobService(settings, *, extractor=None) | Separate scope-bound service; optional async injected ReceiptData extractor |
+| ExtractionJobService.start() / close() | async; initialize/recover once, own bounded worker tasks, deliberate shutdown |
+| ExtractionJobService.submit(request_id, pdf_bytes) -> ExtractionJobResponse | async; shielded durable admission, no model wait |
+| ExtractionJobService.get(request_id) -> ExtractionJobResponse or None | async; thread-backed snapshot read, no workflow lock |
+| integrations.extractor.configuration_snapshot(model) -> ExtractionConfiguration | sync; freeze prompt/schema and source fingerprint, invoked in a thread |
+| integrations.extractor.request_extraction(pdf_bytes, filename, *, configuration=None) -> Response | async; optional persisted configuration, legacy callers unchanged |
+| integrations.extractor.extract_configured(pdf_bytes, configuration) -> tuple[ReceiptData, ExtractionMetadata] | async; same structured adapter/normalization, selected persisted configuration |
+| storage.extraction_jobs.initialize / reserve / ready / claim_next / finish / get / read_input | sync; isolated SQLite/files, always invoked through asyncio.to_thread in service flows |
+
+The CI synthetic set includes tests/test_extraction_jobs.py. Offline guards also
+remove all new extraction configuration/credentials. No real model/Airtable
+request or deployment is authorized in verification. TASKS.md records actual
+test commands and container availability; local tests do not establish a Render
+disk, live application integration or reimbursement completion.
 
 ## Data and normalization
 

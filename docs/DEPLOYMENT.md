@@ -1,5 +1,13 @@
 # Render deployment preparation (not deployed)
 
+Current extraction-job milestone: use
+[EXTRACTION_API_HANDOFF.md](EXTRACTION_API_HANDOFF.md) for the complete checklist
+for a NEW isolated service on feature/extraction-jobs, with a new persistent disk,
+dedicated extraction credential/stable scope and NO Airtable credentials. Do not
+create or modify any Render service in this assignment. The dated sections below
+preserve the earlier legacy deployment checklist and acceptance history; those
+results do not establish container acceptance for the new extraction branch.
+
 ## Current preparation - 2026-10-28
 
 Prepared from feature/minimal-upload-page at

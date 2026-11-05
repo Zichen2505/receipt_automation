@@ -4,11 +4,12 @@ from tempfile import TemporaryFile
 
 from fastapi import FastAPI
 
-from app.api.routes import health, receipts, web
+from app.api.routes import extractions, health, receipts, web
 from app.api.uploads import UploadBodyLimitMiddleware
 from app.config import Settings
 from app.integrations.airtable import AirtableClient
 from app.services.receipt_service import ReceiptService
+from app.services.extraction_jobs import ExtractionJobService
 
 
 def prepare_data_dir(settings: Settings) -> None:
@@ -29,9 +30,16 @@ async def lifespan(app: FastAPI):
     await service.start()
     app.state.receipt_service = service
     app.state.http_tasks = set()
+    app.state.extraction_service = None
+    if settings.extraction_jobs_enabled:
+        jobs = ExtractionJobService(settings)
+        await jobs.start()
+        app.state.extraction_service = jobs
     try:
         yield
     finally:
+        if app.state.extraction_service is not None:
+            await app.state.extraction_service.close()
         # Timed-out/disconnected requests retain ownership through graceful shutdown.
         await asyncio.gather(*tuple(app.state.http_tasks), return_exceptions=True)
 
@@ -40,6 +48,7 @@ app = FastAPI(title="Receipt Agent", version="0.1.0", lifespan=lifespan)
 app.add_middleware(UploadBodyLimitMiddleware)
 app.include_router(health.router)
 app.include_router(receipts.router)
+app.include_router(extractions.router)
 app.include_router(web.router)
 
 

@@ -1353,3 +1353,165 @@ the requested base, and main/all earlier development refs retained their prior
 commits. Commit/push the reviewed documentation update without force; the final
 delivery reports its resolved commit and actual remote verification. No new
 container execution is needed for documentation excluded from the image.
+
+# Durable extraction jobs handoff - 2026-11-04
+
+The user's pasted assignment explicitly authorizes this new backend milestone
+and supersedes earlier restrictions on durable jobs only. Read AGENTS.md,
+PROJECT_SPEC.md, AIRTABLE_SCHEMA.md, all historical TASKS.md sections and
+app/schemas/receipt.py before implementation. The working tree was clean on
+chore/render-predeploy at the exact reviewed baseline
+4e5cad9ccbec0cc5261233f15a753e031e7c4d7b. Fetched origin before editing: the
+baseline had not advanced and feature/extraction-jobs did not exist. Created
+feature/extraction-jobs from that baseline, without using the older main.
+
+Initial sandbox git fetch could not write FETCH_HEAD; the first elevated fetch
+reported ownership mismatch. A command-scoped safe.directory override allowed
+fetch/branch operations without changing global Git configuration. Pre-delivery
+ls-remote confirmed main, baseline and all earlier development refs unchanged;
+the new feature branch was still absent. Commit and push only this branch,
+without force, merge, PR or deployment. Its implementation/delivery SHA is the
+enclosing commit; the final delivery response reports the resolved local and
+verified remote SHA rather than embedding a self-referential commit hash here.
+
+## Implemented behavior and contract
+
+- Added opt-in POST /api/v1/extractions and GET /api/v1/extractions/{request_id},
+  dedicated server-only EXTRACTION_API_KEY, stable EXTRACTION_INTEGRATION_SCOPE
+  and canonical client UUID Idempotency-Key. APP_API_KEY remains unchanged for
+  legacy receipt APIs and is still required at startup. Enabled invalid feature
+  credentials/model/scope/limits/storage fail closed; the disabled default uses
+  existing startup configuration. Key rotation preserves scope/idempotency.
+- Reused strict PDF admission and deterministic validation, extending total-body
+  middleware coverage to the new POST. Exactly one file field is accepted; no
+  caller identity is trusted. PDF filenames never choose paths/configuration.
+- Added only canonical shared models in app/schemas/receipt.py, preserving every
+  original model definition. The envelope contains request_id, status, UTC
+  timestamps, full ReceiptData/ValidationResult, sanitized error and selected
+  extraction-version metadata. Decimal strings, nulls and ordered items persist.
+- New DATA_DIR/extraction_jobs/jobs.sqlite3 and originals are independent of
+  legacy storage/recovery/locks. SQLite primary key (scope, request_id),
+  BEGIN IMMEDIATE and guarded transitions coordinate concurrent submissions.
+  A committed private reservation precedes atomic/fsynced original storage;
+  verified association precedes the queued readiness commit and POST 202.
+  Unpublished reservations can yield GET 404 while acceptance still completes.
+- Identical terminal retries return 200 without a model call, including failed
+  and unknown; changed bytes return 409. Different request IDs never share a
+  result based on PDF hash. Actual digest, selected model/prompt/schema/limits
+  and executable version/fingerprint are stored at first reservation. Later
+  defaults do not reinterpret old jobs; incompatible queued pipelines become
+  unknown. The fingerprint covers extractor/schema/validation/job service and
+  pinned runtime requirements with normalized source line endings.
+- Lifespan-managed bounded workers persist processing before dispatch, recheck
+  input integrity, hold no transaction/legacy workflow lock during extraction,
+  and allow status reads during blocked model execution. Ordinary worker faults
+  are contained so future work is still considered. Active capacity includes
+  accepting/queued/processing, with separately bounded extraction concurrency.
+- Completed requires extraction and receipt validation to pass; needs_review
+  preserves structured issues/data; failed is a committed technical failure;
+  unknown represents uncertain/interrupted work with no usable result assumed.
+  Raw output, normalization/provider metadata and failure/recovery evidence stay
+  internal, including invalid structured output when the adapter received it.
+  No diagnostic exception, secret or internal path is exposed in job responses.
+- Startup resumes valid queued input and marks interrupted accepting/processing
+  unknown, without replaying a model call. Missing/corrupt inputs cannot execute.
+  Shutdown stops claims, completes admission durability, waits the extraction
+  grace, then cancels remaining workers and preserves uncertainty. No automatic
+  input deletion or public reset/retry endpoint is implemented.
+- Existing receipt routes, page, validation, original storage, Airtable adapter,
+  prompt and response contracts remain compatible. Jobs have no Airtable,
+  notification or payment path. Original AIRTABLE_SCHEMA.md v1.1 and independent
+  assertions/evidence/fixtures remain unchanged. Exports remain explicit 501.
+- Added the job tests to existing minimal offline/Docker-build CI, stripped new
+  credentials/configuration from guarded runners and included the new credential
+  name in the staged-secret audit. No dependency version or Docker build/runtime
+  source was changed. No new UI, external queue, service or multi-agent work.
+
+The application developer's primary contract is
+docs/EXTRACTION_API_HANDOFF.md. It includes exact multipart/envelope fields,
+state transitions/errors, authentication/configuration, ownership enforcement,
+known-ID polling and lost-response recovery, the prohibition on automatic new
+jobs after timeout/404, form mapping, immutable full snapshots before corrections,
+stale-response/confirmation responsibilities, retention and controlled maintenance,
+disk/process/backup/migration/restart requirements, and a future NEW isolated
+Render service checklist with no Airtable credentials. PROJECT_SPEC.md, README,
+the legacy handoffs, .env.example and AGENTS.md are consistent with this scope.
+The OpenAI Docs skill was used to review the official Responses create reference;
+no real SDK request, model/provider migration or prompt change was made.
+
+## Actual offline commands and results
+
+All Python commands used the existing .venv. Evidence is fresh, local and ignored.
+Timestamps in evidence are UTC (2026-11-05); this handoff date uses America/New_York
+(2026-11-04). No earlier execution record or protected input was overwritten.
+
+| Executed command/check | Actual result |
+| --- | --- |
+| git status/branch/log/remote; scoped git fetch origin and switch -c feature/extraction-jobs | Clean exact reviewed baseline; origin fetched and new branch created; no newer baseline commit |
+| scripts/offline_regression.py tests/test_http_receipts.py tests/test_extractor.py tests/test_phase1.py | 66 passed; no errors/skips/guard violations; protected inputs unchanged; data/http_api/20261105T015620Z_9df4e366/ |
+| First scripts/offline_regression.py tests/test_extraction_jobs.py | 43 passed, 2 failed; test multipart fixture was malformed before reaching the body limit and a new test guessed a legacy issue message; original failure evidence data/http_api/20261105T015904Z_e665523d/ retained |
+| Corrected new-suite run, same command | 45 passed; valid streaming multipart fixture exercises overflow and the exact existing message is asserted; no product/assertion weakening; data/http_api/20261105T015932Z_00332297/ |
+| Expanded new-suite run, same command | 49 passed; data/http_api/20261105T020032Z_0f426207/ |
+| First full scripts/offline_regression.py | 217 passed, 1 existing AnyIO warning, 23.66 seconds; zero guard violations, unchanged protected inputs; data/http_api/20261105T020406Z_a512684b/ |
+| Final new-suite run after preserving invalid-output evidence and extending pipeline fingerprint | 50 passed, zero errors/skips/guard violations; data/http_api/20261105T020702Z_b8f345b9/ |
+| Final scripts/offline_regression.py | 218 passed, zero failures/errors/skips, 1 existing AnyIO warning, 22.80 seconds; protected inputs unchanged, zero guard violations; data/http_api/20261105T020726Z_12c7c9eb/ |
+| acceptance/phase3_independent/run.py --record extraction-jobs-final-20261104 --snapshot-current | Original 90 assertions passed; zero failures/errors/skips/guard violations, 8.812 seconds; new evidence only; earlier extraction-jobs-20261104 run also passed |
+| acceptance/airtable_independent/run.py --record extraction-jobs-final-20261104 | Original 15 passed; zero failures/errors/skips/guard violations, sources unchanged, 1.453 seconds; earlier extraction-jobs-20261104 run also passed |
+| Inline Python clean-source CI simulation, copying only tracked files plus intentional new source/tests into a fresh checkout, then running the eight workflow suites through scripts/offline_regression.py | 141 passed, 1 explicit absent-development-A.pdf skip, zero failures/errors/guard violations; protected authority unchanged; data/extraction_jobs/20261105T020830Z_67f93b0a/checkout/data/http_api/20261105T020830Z_459f4e29/ |
+| python -m pip check | No broken requirements found in the local Windows environment |
+| docker version, normal and elevated contexts | Client 29.9.2; default docker_engine and desktop-linux dockerDesktopLinuxEngine pipes unavailable; no reachable Engine |
+| Elevated scripts/docker_acceptance.py | not_run_docker_unavailable, zero completed stages, zero real model/Airtable requests; data/docker/20261105T020451Z_92e8a354/ |
+| git diff --exit-code 4e5cad9 on Airtable authority, all independent files, existing tests and unchanged legacy service/validation/storage/Airtable/prompt/page paths | Passed; no unrelated/protected modification |
+| git diff --check; new English source/handoff Han scan | Whitespace passed after correcting one new documentation trailing blank line; Han scan had no matches (normal exit 1) |
+| Scoped git ls-remote --heads origin before delivery | All five original refs matched their reviewed IDs; feature/extraction-jobs absent |
+
+The new tests use actual SQLite transactions and concurrent HTTP/DB claims,
+fictional in-memory PDFs, isolated stores, blocked real external connections and
+injected extractors. Coverage includes admission/auth/config failures, limits,
+one invocation under duplicates, 409, capacity/concurrency, nonblocking GET,
+lost-response/disconnected POST recovery, initial GET 404 during unpublished
+acceptance, missing/partial/renamed acceptance windows, valid queued recovery in a
+new interpreter, interrupted processing unknown without replay, completed/review/
+failed/unknown serialization, complete decimal/null/item persistence, credential
+rotation/scope binding, unavailable pipeline, result/query storage failures,
+contained worker failure, and internal invalid-model-output evidence. The full
+suite also exercises the existing real headless browser with simulated responses.
+Independent original assertions were not edited or relabeled as newly authored.
+
+## Unrun checks, limitations and stop condition
+
+Docker image build/startup/Linux dependencies/UID permissions, actual container
+job persistence/replacement/signals and shutdown are NOT RUN for this branch:
+Docker Engine is unavailable. The harness did not attempt or pass a build.
+Historical baseline Docker acceptance is preserved and is not claimed for new
+code. Clean-source simulation ran on Windows; hosted Linux Actions for the final
+commit is UNCONFIRMED. No service creation/deployment or Render setting changed.
+
+No real model/Airtable request, notification, payment, company record change,
+private/held-out read, visual document evaluation or new UI was performed. Runtime
+failures are injected and crash windows are prepared with actual committed state;
+destructive power-loss behavior and platform durability are not established.
+Single instance/process/worker/event loop and one persistent DATA_DIR remain
+required. A disk preserves records, not an external request's cancellation.
+Storage or model aliases can fail/change; uncertainty is deliberately sticky.
+No cross-database idempotency, distributed lock, automatic expiry, live backup
+service, public maintenance/reset or employee/approval/payment authority is added.
+Full disk retention/growth and malformed-PDF CPU/ingress limits are operator
+responsibilities, as documented. Existing legacy cross-database Airtable duplicate
+limitations remain unchanged. Local success proves neither a Render disk nor live
+application integration or completion of the reimbursement system.
+
+Pre-assignment TASKS.md bytes are preserved in
+data/extraction_jobs/20261105T020830Z_67f93b0a/tasks-before.md. Complete staged
+secret/private-file/whitespace/prefix review, commit and push only
+feature/extraction-jobs, verify its remote SHA and unchanged original refs, then
+stop. Any Docker recheck, live integration, maintenance, application changes or
+Render creation/deployment requires a future explicit assignment.
+
+Final staged review: exactly 23 intentional files, scripts/audit_staged.py passed
+with zero private-file/credential findings, cached whitespace check passed, and
+ignore checks confirmed .env, original A.pdf and new regression/handoff evidence
+remain outside Git. Historical TASKS.md working bytes are an exact prefix and
+the original shared model definitions remain an unchanged normalized prefix.
+All original independent assertions and original authority/fixtures/evidence are
+preserved. No acceptance server/container/worker was left running by this work.

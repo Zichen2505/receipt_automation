@@ -1,5 +1,11 @@
 # Upload/query API handoff
 
+For the newly authorized durable server-to-server extraction contract, read
+[EXTRACTION_API_HANDOFF.md](EXTRACTION_API_HANDOFF.md). It uses separate
+credentials, a stable integration scope, client UUID idempotency, independent
+SQLite/originals and a lifespan execution loop. The legacy receipt API described
+below keeps its response/authentication/synchronization/waiting behavior.
+
 Date: 2026-10-28 (America/New_York).
 
 Authenticated upload and persisted query now delegate to ReceiptService. The

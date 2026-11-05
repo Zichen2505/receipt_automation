@@ -72,7 +72,8 @@ class UploadBodyLimitMiddleware:
         self.app = app
 
     async def __call__(self, scope, receive, send):
-        if scope["type"] != "http" or scope["method"] != "POST" or scope["path"].rstrip("/") != "/api/v1/receipts":
+        if (scope["type"] != "http" or scope["method"] != "POST"
+                or scope["path"].rstrip("/") not in {"/api/v1/receipts", "/api/v1/extractions"}):
             await self.app(scope, receive, send)
             return
         settings = scope["app"].state.settings

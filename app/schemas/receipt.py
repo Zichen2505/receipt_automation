@@ -89,3 +89,46 @@ class StoredReceipt(Schema):
     metadata: ProcessingMetadata
     created_at: str
     updated_at: str
+
+
+class ExtractionVersion(Schema):
+    pipeline_version: str
+    pipeline_sha256: str
+    model: str
+    prompt_sha256: str
+    schema_sha256: str
+    request_timeout_seconds: float = 120.0
+    max_output_tokens: int = 4096
+
+
+class ExtractionConfiguration(Schema):
+    version: ExtractionVersion
+    prompt: str
+    output_schema: dict[str, Any]
+
+
+class ExtractionJobError(Schema):
+    code: str
+    message: str
+
+
+class ExtractionJobResponse(Schema):
+    request_id: str
+    status: Literal["queued", "processing", "completed", "needs_review", "failed", "unknown"]
+    created_at: str
+    updated_at: str
+    data: ReceiptData | None = None
+    validation: ValidationResult | None = None
+    error: ExtractionJobError | None = None
+    extraction_version: ExtractionVersion
+
+
+class StoredExtractionJob(Schema):
+    response: ExtractionJobResponse
+    scope: str
+    phase: Literal["accepting", "queued", "processing", "completed", "needs_review", "failed", "unknown"]
+    pdf_sha256: str
+    input_id: str
+    original_pdf_ref: str | None = None
+    configuration: ExtractionConfiguration
+    metadata: ProcessingMetadata = Field(default_factory=ProcessingMetadata)

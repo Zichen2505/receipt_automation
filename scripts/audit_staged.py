@@ -18,7 +18,7 @@ def main():
     names = git("diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z").decode().split("\0")
     names = [name for name in names if name]
     # Read locally only for comparison; never print credentials or matching text.
-    secret_names = {"APP_API_KEY", "MODEL_API_KEY", "OPENAI_API_KEY", "AIRTABLE_TOKEN"}
+    secret_names = {"APP_API_KEY", "MODEL_API_KEY", "OPENAI_API_KEY", "AIRTABLE_TOKEN", "EXTRACTION_API_KEY"}
     secrets = [os.environ[name].encode() for name in secret_names
                if len(os.environ.get(name, "")) >= 8]
     env_path = ROOT / ".env"

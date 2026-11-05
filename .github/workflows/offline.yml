@@ -28,5 +28,6 @@ jobs:
           tests/test_http_receipts.py tests/test_airtable_sync.py
           tests/test_web_page.py tests/test_extractor.py
           tests/test_phase2_runner.py tests/test_phase2b.py tests/test_deployment.py
+          tests/test_extraction_jobs.py
       - name: Build production image without secrets or local evidence
         run: docker build --tag receipt-agent:ci .
